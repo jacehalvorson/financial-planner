@@ -1,6 +1,7 @@
+--- html ---
 
 <section>
-    <h1>Financial Planner</h1>
+    <h1>Financial Simulation</h1>
     <p>Welcome to your personal financial planning dashboard. Choose a section below to get started.</p>
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; margin-top: 3rem;">
@@ -32,7 +33,7 @@
            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
             <div style="color: white;">
                 <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">💰 Contributions</h2>
-                <p style="margin: 0; opacity: 0.9; font-size: 0.95rem;">Explore future contribution scenarios and optimize your retirement savings strategy.</p>
+                <p style="margin: 0; opacity: 0.9; font-size: 0.95rem;">Track and manage your retirement account contributions and savings.</p>
             </div>
         </a>
 
@@ -73,7 +74,7 @@
         <h3 style="margin: 0 0 1rem 0; color: #333;">Getting Started</h3>
         <ul style="margin: 0; padding-left: 1.5rem; color: #666;">
             <li style="margin-bottom: 0.5rem;">Use <strong>Global Market</strong> to understand historical investment returns</li>
-            <li style="margin-bottom: 0.5rem;">Plan future <strong>Contributions</strong> to maximize retirement savings</li>
+            <li style="margin-bottom: 0.5rem;">Track your <strong>Contributions</strong> to maximize retirement savings</li>
             <li style="margin-bottom: 0.5rem;">Plan <strong>Withdrawals</strong> to optimize your retirement income</li>
             <li style="margin-bottom: 0.5rem;">Save <strong>Medical Receipts</strong> for HSA reimbursements</li>
         </ul>

@@ -37,8 +37,12 @@ countries_json = json.dumps(filtered_countries_data)
 </div>
 
 <section>
-    <h1>Global Stock Market Performance</h1>
-    <p>Growth of $1 invested in stock markets worldwide over the past 20 years (World Bank data). Hover over countries in the legend to highlight them on the chart.</p>
+    <div style="margin-bottom: 1rem;">
+        <a href="/" style="color: #667eea; text-decoration: none;">&larr; Back to Dashboard</a>
+    </div>
+
+    <h1 style="margin-bottom: 0.5rem;">Global Stock Market Performance</h1>
+    <p style="margin-bottom: 1.5rem; color: #666;">Growth of $1 invested in stock markets worldwide over the past 20 years (World Bank data). Hover over countries in the legend to highlight them on the chart.</p>
 
     <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
         <button id="showAllButton" style="

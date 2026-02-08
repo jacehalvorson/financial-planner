@@ -2,15 +2,6 @@
 
 from datetime import datetime, timedelta
 import yfinance as yf
-import pandas as pd
-from fredapi import Fred
-import os
-
-# Initialize FRED API (works without API key but with rate limits)
-# To use your own API key, set FRED_API_KEY environment variable
-# Get free key at: https://fred.stlouisfed.org/docs/api/api_key.html
-FRED_API_KEY = os.environ.get('FRED_API_KEY', None)
-fred = Fred(api_key=FRED_API_KEY) if FRED_API_KEY else None
 
 
 def get_stock_returns(ticker, years=20, label="Stock"):
@@ -83,7 +74,7 @@ def get_global_market_returns(years=20):
 
 def get_inflation_data_from_fred(years=20):
     """
-    Fetch real CPI data from FRED.
+    Use historical inflation data.
 
     Args:
         years: Number of years of historical data to fetch
@@ -91,49 +82,7 @@ def get_inflation_data_from_fred(years=20):
     Returns:
         dict with 'dates' and 'values' lists (compounded starting at 1)
     """
-    if not fred:
-        print("FRED API key not set. Using fallback inflation data.")
-        return get_fallback_inflation_data(years)
-
-    try:
-        # Fetch CPI data from FRED (CPIAUCSL = Consumer Price Index for All Urban Consumers)
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=years * 365 + 365)  # Extra year for calculation
-
-        cpi_data = fred.get_series('CPIAUCSL', start_date, end_date)
-
-        # Get annual average CPI for each year
-        cpi_data.index = pd.to_datetime(cpi_data.index)
-        annual_cpi = cpi_data.groupby(cpi_data.index.year).mean()
-
-        # Calculate year-over-year inflation rates
-        years_list = []
-        inflation_rates = []
-
-        for i in range(1, len(annual_cpi)):
-            year = annual_cpi.index[i]
-            prev_cpi = annual_cpi.iloc[i-1]
-            curr_cpi = annual_cpi.iloc[i]
-            inflation_rate = ((curr_cpi - prev_cpi) / prev_cpi) * 100
-
-            years_list.append(year)
-            inflation_rates.append(inflation_rate)
-
-        # Calculate compounded values starting at 1
-        compounded_values = [1.0]
-        for rate in inflation_rates:
-            compounded_values.append(compounded_values[-1] * (1 + rate / 100))
-
-        # Round values
-        compounded_values = [round(v, 4) for v in compounded_values]
-
-        return {
-            'dates': [years_list[0] - 1] + years_list,
-            'values': compounded_values
-        }
-    except Exception as e:
-        print(f"Error fetching FRED data: {e}")
-        return get_fallback_inflation_data(years)
+    return get_fallback_inflation_data(years)
 
 
 def get_fallback_inflation_data(years=20):

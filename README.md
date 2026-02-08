@@ -1,4 +1,4 @@
-# financial-planner
+# financial-simulation
 
 A SaaS starter with Stripe, SQLAlchemy models, and stubbed auth.
 

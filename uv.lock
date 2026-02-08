@@ -211,7 +211,7 @@ wheels = [
 ]
 
 [[package]]
-name = "financial-planner"
+name = "financial-simulation"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

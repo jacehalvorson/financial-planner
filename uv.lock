@@ -877,7 +877,7 @@ wheels = [
 
 [[package]]
 name = "pywire"
-version = "0.1.7"
+version = "0.1.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jinja2" },
@@ -890,9 +890,9 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/56/af/70f331fe0982bc27442e06698d31b27c76761a0ad374bb9c41bcf39d0f05/pywire-0.1.7.tar.gz", hash = "sha256:a9b1e30bcceaa7a517bb8e3c02820fe159bbd1dbad9d1925593b7e922ce51d04", size = 2864281, upload-time = "2026-02-07T03:15:46.586Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/97/70/2bd1235d74eedcf42a5c5cbcf4b440b8eccb21284b2fa8fbfe00ba47bfb8/pywire-0.1.8.tar.gz", hash = "sha256:08c6e2d377b6120058698432a1f1bf9e670ebc28f8b8d967f7b638e77d438cd8", size = 2880883, upload-time = "2026-02-07T23:00:24.005Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0f/64/abf58b5c33035f50f4312de86484b09b3b59081e0b526c201d072daa38fd/pywire-0.1.7-py3-none-any.whl", hash = "sha256:8a29922ff47daea628becd5b80972047d605245591d13e93e7b56e146f403af6", size = 231148, upload-time = "2026-02-07T03:15:44.749Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/ea/6d419bc884df34cc2ba0d46541ed98164d2f0ecabe1a3ca1744649406d78/pywire-0.1.8-py3-none-any.whl", hash = "sha256:e70ab0a4bf6e808fab60487aacd302496de8ea007e97dbe22fc352cdfb8dc6a1", size = 242204, upload-time = "2026-02-07T23:00:22.068Z" },
 ]
 
 [[package]]

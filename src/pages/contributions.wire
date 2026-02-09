@@ -1,127 +1,117 @@
 from pywire import wire
-
-# Default values
-current_age = 35
-planned_retirement_age = 65
-annual_income = 100000.00
-expected_income_growth = 3.0
-
-# 401k inputs (defaults to 0 if not used)
-balance_401k = 0.00
-contribution_401k_percent = 0.0
-employer_match_percent = 50.0
-employer_match_limit = 6.0
-
-# Roth IRA inputs (defaults to 0 if not used)
-balance_roth = 0.00
-annual_roth_contribution = 0.00
-
-# Calculations
-years_to_retirement = max(0, planned_retirement_age - current_age)
-
-# Calculate 401k contribution in dollars
-annual_401k_contribution = annual_income * (contribution_401k_percent / 100.0)
-
-# Calculate employer match (with protection)
-if annual_income > 0 and contribution_401k_percent > 0:
-    match_on_contribution = annual_401k_contribution * (employer_match_percent / 100.0)
-    match_limit_dollars = annual_income * (employer_match_limit / 100.0)
-    annual_employer_match = min(match_on_contribution, match_limit_dollars)
-else:
-    annual_employer_match = 0.0
-
-# Total calculations
-current_balance = balance_401k + balance_roth
-total_annual_contribution = annual_401k_contribution + annual_roth_contribution
-total_annual_savings = total_annual_contribution + annual_employer_match
-total_contributions_by_retirement = total_annual_contribution * years_to_retirement
-total_employer_match_by_retirement = annual_employer_match * years_to_retirement
-total_saved_by_retirement = current_balance + total_contributions_by_retirement + total_employer_match_by_retirement
-
-# Income-based calculations
-savings_rate = (total_annual_savings / annual_income * 100) if annual_income > 0 else 0
-personal_savings_rate = (total_annual_contribution / annual_income * 100) if annual_income > 0 else 0
-income_at_retirement = annual_income * ((1 + expected_income_growth / 100) ** years_to_retirement)
-
-# Limits
-limit_401k = 23500.00
-limit_roth = 7000.00
-is_maxing_401k = annual_401k_contribution >= limit_401k
-is_maxing_roth = annual_roth_contribution >= limit_roth
-
-# Initialize wires for conditional rendering
-contribution_401k_status = wire('')
-contribution_roth_status = wire('')
-employer_match_display = wire('')
-
-# Format strings for display (avoiding nested f-strings)
-if annual_401k_contribution > 0:
-    if is_maxing_401k:
-        contribution_401k_status.value = ' ✓ Maxed!'
-    else:
-        pct_of_limit = int((annual_401k_contribution / limit_401k) * 100) if limit_401k > 0 else 0
-        contribution_401k_status.value = f'${annual_401k_contribution:,.0f}/year • {pct_of_limit}% of ${limit_401k:,.0f} limit'
-else:
-    contribution_401k_status.value = ''
-
-if annual_roth_contribution > 0:
-    if is_maxing_roth:
-        contribution_roth_status.value = ' ✓ Maxed!'
-    else:
-        pct_of_limit = int((annual_roth_contribution / limit_roth) * 100) if limit_roth > 0 else 0
-        contribution_roth_status.value = f'{pct_of_limit}% of ${limit_roth:,.0f} limit'
-else:
-    contribution_roth_status.value = ''
-
-if annual_employer_match > 0:
-    employer_match_display.value = f'${annual_employer_match:,.0f}/year'
-else:
-    employer_match_display.value = ''
-
-# Calculate percentages for breakdown chart (protect against division by zero)
-if total_saved_by_retirement > 0:
-    pct_401k = min(100, (annual_401k_contribution * years_to_retirement / total_saved_by_retirement) * 100)
-    pct_roth = min(100, (annual_roth_contribution * years_to_retirement / total_saved_by_retirement) * 100)
-    pct_employer = min(100, (total_employer_match_by_retirement / total_saved_by_retirement) * 100)
-    pct_starting = min(100, (current_balance / total_saved_by_retirement) * 100)
-else:
-    pct_401k = 0
-    pct_roth = 0
-    pct_employer = 0
-    pct_starting = 0
-
-# Calculate yearly projections for chart
 import json
 
-# Ensure we have at least current age in the range
-if years_to_retirement > 0:
-    years = list(range(current_age, planned_retirement_age + 1))
-else:
-    years = [current_age]
+# Reactive input values - these are the only wires we need
+current_age = wire(35)
+planned_retirement_age = wire(65)
+annual_income = wire(100000.00)
+expected_income_growth = wire(3.0)
 
-yearly_401k = []
-yearly_roth = []
-yearly_total = []
+# 401k reactive inputs
+balance_401k = wire(0.00)
+contribution_401k_percent = wire(0.0)
+employer_match_percent = wire(50.0)
+employer_match_limit = wire(6.0)
 
-for i, year in enumerate(years):
-    # 401k balance: starting balance + contributions + employer match up to this year
-    curr_401k = balance_401k + (annual_401k_contribution * i) + (annual_employer_match * i)
-    yearly_401k.append(round(curr_401k, 2))
+# Roth IRA reactive inputs
+balance_roth = wire(0.00)
+annual_roth_contribution = wire(0.00)
 
-    # Roth IRA balance: starting balance + contributions up to this year
-    curr_roth = balance_roth + (annual_roth_contribution * i)
-    yearly_roth.append(round(curr_roth, 2))
+# Limits (constants)
+limit_401k = 23500.00
+limit_roth = 7000.00
 
-    # Total
-    yearly_total.append(round(curr_401k + curr_roth, 2))
+# Helper functions to calculate derived values (called from template)
+def calc_years_to_retirement():
+    return max(0, $planned_retirement_age - $current_age)
 
-chart_data = {
-    'years': years,
-    'yearly_401k': yearly_401k,
-    'yearly_roth': yearly_roth,
-    'yearly_total': yearly_total
-}
-chart_data_json = json.dumps(chart_data)
+def calc_annual_401k_contribution():
+    return $annual_income * ($contribution_401k_percent / 100.0)
+
+def calc_annual_employer_match():
+    if $annual_income > 0 and $contribution_401k_percent > 0:
+        match_on_contribution = calc_annual_401k_contribution() * ($employer_match_percent / 100.0)
+        match_limit_dollars = $annual_income * ($employer_match_limit / 100.0)
+        return min(match_on_contribution, match_limit_dollars)
+    return 0.0
+
+def calc_current_balance():
+    return $balance_401k + $balance_roth
+
+def calc_total_annual_contribution():
+    return calc_annual_401k_contribution() + $annual_roth_contribution
+
+def calc_total_annual_savings():
+    return calc_total_annual_contribution() + calc_annual_employer_match()
+
+def calc_total_saved_by_retirement():
+    years = calc_years_to_retirement()
+    contributions = calc_total_annual_contribution() * years
+    employer_match = calc_annual_employer_match() * years
+    return calc_current_balance() + contributions + employer_match
+
+def calc_total_employer_match_by_retirement():
+    return calc_annual_employer_match() * calc_years_to_retirement()
+
+def calc_total_contributions_by_retirement():
+    return calc_total_annual_contribution() * calc_years_to_retirement()
+
+def calc_chart_data():
+    """Generate chart data as JSON string for the Chart.js visualization."""
+    years_range = list(range($current_age, $planned_retirement_age + 1)) if calc_years_to_retirement() > 0 else [$current_age]
+    num_years = len(years_range)
+
+    data = {
+        "years": years_range,
+        "yearly_401k": [
+            round($balance_401k + (calc_annual_401k_contribution() * i) + (calc_annual_employer_match() * i), 2)
+            for i in range(num_years)
+        ],
+        "yearly_roth": [
+            round($balance_roth + ($annual_roth_contribution * i), 2)
+            for i in range(num_years)
+        ],
+        "yearly_total": [
+            round(
+                $balance_401k + (calc_annual_401k_contribution() * i) + (calc_annual_employer_match() * i) +
+                $balance_roth + ($annual_roth_contribution * i),
+                2
+            )
+            for i in range(num_years)
+        ]
+    }
+    return json.dumps(data)
+
+# Input change handlers - simple value setters
+def update_current_age(value):
+    $current_age = int(value) if value else 35
+
+def update_retirement_age(value):
+    $planned_retirement_age = int(value) if value else 65
+
+def update_annual_income(value):
+    $annual_income = float(value) if value else 0.0
+
+def update_income_growth(value):
+    $expected_income_growth = float(value) if value else 0.0
+
+def update_balance_401k(value):
+    $balance_401k = float(value) if value else 0.0
+
+def update_contribution_401k(value):
+    $contribution_401k_percent = float(value) if value else 0.0
+
+def update_employer_match_percent(value):
+    $employer_match_percent = float(value) if value else 0.0
+
+def update_employer_match_limit(value):
+    $employer_match_limit = float(value) if value else 0.0
+
+def update_balance_roth(value):
+    $balance_roth = float(value) if value else 0.0
+
+def update_roth_contribution(value):
+    $annual_roth_contribution = float(value) if value else 0.0
 
 --- html ---
 
@@ -146,7 +136,8 @@ chart_data_json = json.dumps(chart_data)
                         </label>
                         <input
                             type="number"
-                            value={current_age}
+                            value={current_age.value}
+                            @input={update_current_age($event.target.value)}
                             style="width: 100%; padding: 0.6rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                             placeholder="35"
                         />
@@ -157,7 +148,8 @@ chart_data_json = json.dumps(chart_data)
                         </label>
                         <input
                             type="number"
-                            value={planned_retirement_age}
+                            value={planned_retirement_age.value}
+                            @input={update_retirement_age($event.target.value)}
                             style="width: 100%; padding: 0.6rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                             placeholder="65"
                         />
@@ -181,7 +173,8 @@ chart_data_json = json.dumps(chart_data)
                                     <span style="position: absolute; left: 10px; color: #666;">$</span>
                                     <input
                                         type="number"
-                                        value={annual_income}
+                                        value={annual_income.value}
+                                        @input={update_annual_income($event.target.value)}
                                         style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                                         placeholder="100000"
                                         step="1000"
@@ -196,7 +189,8 @@ chart_data_json = json.dumps(chart_data)
                                 <div style="position: relative; display: flex; align-items: center;">
                                     <input
                                         type="number"
-                                        value={expected_income_growth}
+                                        value={expected_income_growth.value}
+                                        @input={update_income_growth($event.target.value)}
                                         style="width: 100%; padding: 0.6rem 1.5rem 0.6rem 0.6rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                                         placeholder="3.0"
                                         step="0.5"
@@ -217,7 +211,8 @@ chart_data_json = json.dumps(chart_data)
                                 <span style="position: absolute; left: 10px; color: #666;">$</span>
                                 <input
                                     type="number"
-                                    value={balance_401k}
+                                    value={balance_401k.value}
+                                    @input={update_balance_401k($event.target.value)}
                                     style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                                     placeholder="0"
                                     step="1000"
@@ -232,14 +227,18 @@ chart_data_json = json.dumps(chart_data)
                             <div style="position: relative; display: flex; align-items: center;">
                                 <input
                                     type="number"
-                                    value={contribution_401k_percent}
+                                    value={contribution_401k_percent.value}
+                                    @input={update_contribution_401k($event.target.value)}
                                     style="width: 100%; padding: 0.6rem 1.5rem 0.6rem 0.6rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                                     placeholder="0"
                                     step="0.5"
                                 />
                                 <span style="position: absolute; right: 10px; color: #666;">% of income</span>
                             </div>
-                            <div $if={contribution_401k_status} style="margin-top: 0.3rem; font-size: 0.8rem; color: #666;">{contribution_401k_status}</div>
+                            <div $if={annual_income.value * (contribution_401k_percent.value / 100.0) > 0} style="margin-top: 0.3rem; font-size: 0.8rem; color: #666;">{
+                                ' ✓ Maxed!' if (annual_income.value * (contribution_401k_percent.value / 100.0)) >= limit_401k
+                                else f'${(annual_income.value * (contribution_401k_percent.value / 100.0)):,.0f}/year • {int((annual_income.value * (contribution_401k_percent.value / 100.0)) / limit_401k * 100)}% of ${limit_401k:,.0f} limit'
+                            }</div>
                         </div>
 
                         <div style="background: #f8f9fa; padding: 0.75rem; border-radius: 6px;">
@@ -252,7 +251,8 @@ chart_data_json = json.dumps(chart_data)
                                     <div style="position: relative; display: flex; align-items: center;">
                                         <input
                                             type="number"
-                                            value={employer_match_percent}
+                                            value={employer_match_percent.value}
+                                            @input={update_employer_match_percent($event.target.value)}
                                             style="width: 100%; padding: 0.5rem 1.3rem 0.5rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; font-family: inherit; background: white;"
                                             placeholder="50"
                                             step="1"
@@ -267,7 +267,8 @@ chart_data_json = json.dumps(chart_data)
                                     <div style="position: relative; display: flex; align-items: center;">
                                         <input
                                             type="number"
-                                            value={employer_match_limit}
+                                            value={employer_match_limit.value}
+                                            @input={update_employer_match_limit($event.target.value)}
                                             style="width: 100%; padding: 0.5rem 1.3rem 0.5rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; font-family: inherit; background: white;"
                                             placeholder="6"
                                             step="0.5"
@@ -276,8 +277,13 @@ chart_data_json = json.dumps(chart_data)
                                     </div>
                                 </div>
                             </div>
-                            {$if employer_match_display}
-                            <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #28a745; font-weight: 600;">Match: {employer_match_display}</div>
+                            {$if (annual_income.value > 0 and contribution_401k_percent.value > 0 and min((annual_income.value * (contribution_401k_percent.value / 100.0)) * (employer_match_percent.value / 100.0), annual_income.value * (employer_match_limit.value / 100.0)) > 0)}
+                            <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #28a745; font-weight: 600;">Match: ${
+                                '{:,.0f}'.format(min(
+                                    (annual_income.value * (contribution_401k_percent.value / 100.0)) * (employer_match_percent.value / 100.0),
+                                    annual_income.value * (employer_match_limit.value / 100.0)
+                                ))
+                            }/year</div>
                             {/if}
                         </div>
                     </div>
@@ -297,7 +303,8 @@ chart_data_json = json.dumps(chart_data)
                                 <span style="position: absolute; left: 10px; color: #666;">$</span>
                                 <input
                                     type="number"
-                                    value={balance_roth}
+                                    value={balance_roth.value}
+                                    @input={update_balance_roth($event.target.value)}
                                     style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                                     placeholder="0"
                                     step="1000"
@@ -313,36 +320,23 @@ chart_data_json = json.dumps(chart_data)
                                 <span style="position: absolute; left: 10px; color: #666;">$</span>
                                 <input
                                     type="number"
-                                    value={annual_roth_contribution}
+                                    value={annual_roth_contribution.value}
+                                    @input={update_roth_contribution($event.target.value)}
                                     style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                                     placeholder="0"
                                     step="500"
                                 />
                             </div>
-                            {$if contribution_roth_status}
-                            <div style="margin-top: 0.3rem; font-size: 0.8rem; color: #666;">{contribution_roth_status}</div>
+                            {$if annual_roth_contribution.value > 0}
+                            <div style="margin-top: 0.3rem; font-size: 0.8rem; color: #666;">{
+                                ' ✓ Maxed!' if annual_roth_contribution.value >= limit_roth
+                                else f'{int(annual_roth_contribution.value / limit_roth * 100)}% of ${limit_roth:,.0f} limit'
+                            }</div>
                             {/if}
                         </div>
                     </div>
                 </details>
 
-                <button style="
-                    width: 100%;
-                    padding: 0.75rem;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    border: none;
-                    border-radius: 6px;
-                    font-size: 1rem;
-                    font-weight: 600;
-                    cursor: pointer;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    transition: all 0.2s;
-                    margin-top: 1rem;
-                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'"
-                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
-                    Calculate Projection
-                </button>
             </div>
         </div>
 
@@ -354,26 +348,26 @@ chart_data_json = json.dumps(chart_data)
                 <div style="display: grid; gap: 0.75rem;">
                     <div style="padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 6px; color: white;">
                         <div style="font-size: 0.85rem; opacity: 0.9;">Years to Retirement</div>
-                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">{years_to_retirement}</div>
-                        <div style="font-size: 0.8rem; opacity: 0.8;">Age {current_age} → {planned_retirement_age}</div>
+                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">{calc_years_to_retirement()}</div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">Age {current_age.value} → {planned_retirement_age.value}</div>
                     </div>
 
                     <div style="padding: 1rem; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 6px; color: white;">
                         <div style="font-size: 0.85rem; opacity: 0.9;">Annual Savings</div>
-                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">${'{:,.0f}'.format(total_annual_savings)}</div>
-                        <div style="font-size: 0.8rem; opacity: 0.8;">You: ${'{:,.0f}'.format(total_annual_contribution)} + Match: ${'{:,.0f}'.format(annual_employer_match)}</div>
+                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">${'{:,.0f}'.format(calc_total_annual_savings())}</div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">You: ${'{:,.0f}'.format(calc_total_annual_contribution())} + Match: ${'{:,.0f}'.format(calc_annual_employer_match())}</div>
                     </div>
 
                     <div style="padding: 1rem; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 6px; color: white;">
                         <div style="font-size: 0.85rem; opacity: 0.9;">Balance at Retirement</div>
-                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">${'{:,.0f}'.format(total_saved_by_retirement)}</div>
+                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">${'{:,.0f}'.format(calc_total_saved_by_retirement())}</div>
                         <div style="font-size: 0.8rem; opacity: 0.8;">Without growth</div>
                     </div>
 
                     <div style="padding: 1rem; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-radius: 6px; color: white;">
                         <div style="font-size: 0.85rem; opacity: 0.9;">Total Savings Rate</div>
-                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">{'{:.1f}'.format(savings_rate)}%</div>
-                        <div style="font-size: 0.8rem; opacity: 0.8;">You: {'{:.1f}'.format(personal_savings_rate)}% + Match: {'{:.1f}'.format((annual_employer_match / annual_income * 100) if annual_income > 0 else 0)}%</div>
+                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">{'{:.1f}'.format((calc_total_annual_savings() / annual_income.value * 100) if annual_income.value > 0 else 0)}%</div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">You: {'{:.1f}'.format((calc_total_annual_contribution() / annual_income.value * 100) if annual_income.value > 0 else 0)}% + Match: {'{:.1f}'.format((calc_annual_employer_match() / annual_income.value * 100) if annual_income.value > 0 else 0)}%</div>
                     </div>
                 </div>
             </div>
@@ -384,47 +378,47 @@ chart_data_json = json.dumps(chart_data)
                 <div style="margin-bottom: 1rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
                         <span style="color: #666; font-size: 0.9rem;">401(k)</span>
-                        <span style="font-weight: 600; font-size: 0.9rem;">${'{:,.0f}'.format(annual_401k_contribution * years_to_retirement)}</span>
+                        <span style="font-weight: 600; font-size: 0.9rem;">${'{:,.0f}'.format(calc_annual_401k_contribution() * calc_years_to_retirement())}</span>
                     </div>
                     <div style="height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden;">
-                        <div style="height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: {pct_401k}%;"></div>
+                        <div style="height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: {min(100, (calc_annual_401k_contribution() * calc_years_to_retirement() / calc_total_saved_by_retirement() * 100) if calc_total_saved_by_retirement() > 0 else 0)}%;"></div>
                     </div>
                 </div>
 
                 <div style="margin-bottom: 1rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
                         <span style="color: #666; font-size: 0.9rem;">Roth IRA</span>
-                        <span style="font-weight: 600; font-size: 0.9rem;">${'{:,.0f}'.format(annual_roth_contribution * years_to_retirement)}</span>
+                        <span style="font-weight: 600; font-size: 0.9rem;">${'{:,.0f}'.format(annual_roth_contribution.value * calc_years_to_retirement())}</span>
                     </div>
                     <div style="height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden;">
-                        <div style="height: 100%; background: linear-gradient(90deg, #f093fb, #f5576c); width: {pct_roth}%;"></div>
+                        <div style="height: 100%; background: linear-gradient(90deg, #f093fb, #f5576c); width: {min(100, (annual_roth_contribution.value * calc_years_to_retirement() / calc_total_saved_by_retirement() * 100) if calc_total_saved_by_retirement() > 0 else 0)}%;"></div>
                     </div>
                 </div>
 
                 <div style="margin-bottom: 1rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
                         <span style="color: #666; font-size: 0.9rem;">Employer Match</span>
-                        <span style="font-weight: 600; font-size: 0.9rem; color: #28a745;">${'{:,.0f}'.format(total_employer_match_by_retirement)}</span>
+                        <span style="font-weight: 600; font-size: 0.9rem; color: #28a745;">${'{:,.0f}'.format(calc_total_employer_match_by_retirement())}</span>
                     </div>
                     <div style="height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden;">
-                        <div style="height: 100%; background: linear-gradient(90deg, #43e97b, #38f9d7); width: {pct_employer}%;"></div>
+                        <div style="height: 100%; background: linear-gradient(90deg, #43e97b, #38f9d7); width: {min(100, (calc_total_employer_match_by_retirement() / calc_total_saved_by_retirement() * 100) if calc_total_saved_by_retirement() > 0 else 0)}%;"></div>
                     </div>
                 </div>
 
                 <div style="margin-bottom: 1rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
                         <span style="color: #666; font-size: 0.9rem;">Starting Balance</span>
-                        <span style="font-weight: 600; font-size: 0.9rem;">${'{:,.0f}'.format(current_balance)}</span>
+                        <span style="font-weight: 600; font-size: 0.9rem;">${'{:,.0f}'.format(calc_current_balance())}</span>
                     </div>
                     <div style="height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden;">
-                        <div style="height: 100%; background: linear-gradient(90deg, #4facfe, #00f2fe); width: {pct_starting}%;"></div>
+                        <div style="height: 100%; background: linear-gradient(90deg, #4facfe, #00f2fe); width: {min(100, (calc_current_balance() / calc_total_saved_by_retirement() * 100) if calc_total_saved_by_retirement() > 0 else 0)}%;"></div>
                     </div>
                 </div>
 
                 <div style="border-top: 1px solid #f0f0f0; padding-top: 0.75rem; margin-top: 0.75rem;">
                     <div style="display: flex; justify-content: space-between;">
                         <span style="font-weight: 600;">Total</span>
-                        <span style="font-weight: 700; font-size: 1.1rem; color: #667eea;">${'{:,.0f}'.format(total_saved_by_retirement)}</span>
+                        <span style="font-weight: 700; font-size: 1.1rem; color: #667eea;">${'{:,.0f}'.format(calc_total_saved_by_retirement())}</span>
                     </div>
                 </div>
             </div>
@@ -439,7 +433,7 @@ chart_data_json = json.dumps(chart_data)
     </div>
 
     <!-- Growth Chart -->
-    <div id="chart-data" style="display: none;" data-chart='{chart_data_json}'></div>
+    <div id="chart-data" style="display: none;" data-chart='{calc_chart_data()}'></div>
 
     <div style="margin-top: 3rem;">
         <h2 style="margin-bottom: 1rem;">Savings Growth Over Time</h2>

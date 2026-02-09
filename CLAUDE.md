@@ -153,15 +153,15 @@ For input fields, you can use `@input` or `@change`.
 search_query = wire("")
 
 
-def on_search(value):
-    $search_query = value
-    print(f"Searching for: {value}")
+def on_search(event):
+    $search_query = event.value
+    print(f"Searching for: {event.value}")
 
 
 ---html---
 <input type="text"
        placeholder="Search..."
-       @input={on_search($event.target.value)}>
+       @input={on_search}>
 ```
 
 We’ll cover more advanced event features in the [Event Modifiers](/docs/syntax/event-modifiers) section.
@@ -1460,7 +1460,7 @@ PyWire supports several event modifiers to simplify common tasks like preventing
 * `.throttle.ms`: Ensures the event handler is called at most once every specified number of milliseconds.
 
 ```html
-<input type="text" @input.debounce.300="{search_users($event.target.value)}" />
+<input type="text" @input.debounce.300="{search_users}" />
 ```
 
 ## Error Handling

@@ -83,35 +83,35 @@ def calc_chart_data():
     return json.dumps(data)
 
 # Input change handlers - simple value setters
-def update_current_age(value):
-    $current_age = int(value) if value else 35
+def update_current_age(event):
+    $current_age = int(event.value) if event.value else 35
 
-def update_retirement_age(value):
-    $planned_retirement_age = int(value) if value else 65
+def update_retirement_age(event):
+    $planned_retirement_age = int(event.value) if event.value else 65
 
-def update_annual_income(value):
-    $annual_income = float(value) if value else 0.0
+def update_annual_income(event):
+    $annual_income = float(event.value) if event.value else 0.0
 
-def update_income_growth(value):
-    $expected_income_growth = float(value) if value else 0.0
+def update_income_growth(event):
+    $expected_income_growth = float(event.value) if event.value else 0.0
 
-def update_balance_401k(value):
-    $balance_401k = float(value) if value else 0.0
+def update_balance_401k(event):
+    $balance_401k = float(event.value) if event.value else 0.0
 
-def update_contribution_401k(value):
-    $contribution_401k_percent = float(value) if value else 0.0
+def update_contribution_401k(event):
+    $contribution_401k_percent = float(event.value) if event.value else 0.0
 
-def update_employer_match_percent(value):
-    $employer_match_percent = float(value) if value else 0.0
+def update_employer_match_percent(event):
+    $employer_match_percent = float(event.value) if event.value else 0.0
 
-def update_employer_match_limit(value):
-    $employer_match_limit = float(value) if value else 0.0
+def update_employer_match_limit(event):
+    $employer_match_limit = float(event.value) if event.value else 0.0
 
-def update_balance_roth(value):
-    $balance_roth = float(value) if value else 0.0
+def update_balance_roth(event):
+    $balance_roth = float(event.value) if event.value else 0.0
 
-def update_roth_contribution(value):
-    $annual_roth_contribution = float(value) if value else 0.0
+def update_roth_contribution(event):
+    $annual_roth_contribution = float(event.value) if event.value else 0.0
 
 --- html ---
 
@@ -131,25 +131,25 @@ def update_roth_contribution(value):
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
                     <div>
-                        <label style="display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem;">
+                        <label style="display: block; margin-bottom: 0.25rem; color: #555; font-weight: 500; font-size: 0.9rem;">
                             Current Age
                         </label>
                         <input
                             type="number"
                             value={current_age.value}
-                            @input={update_current_age($event.target.value)}
+                            @input={update_current_age}
                             style="width: 100%; padding: 0.6rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                             placeholder="35"
                         />
                     </div>
                     <div>
-                        <label style="display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem;">
+                        <label style="display: block; margin-bottom: 0.25rem; color: #555; font-weight: 500; font-size: 0.9rem;">
                             Retirement Age
                         </label>
                         <input
                             type="number"
                             value={planned_retirement_age.value}
-                            @input={update_retirement_age($event.target.value)}
+                            @input={update_retirement_age}
                             style="width: 100%; padding: 0.6rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                             placeholder="65"
                         />
@@ -158,12 +158,12 @@ def update_roth_contribution(value):
 
                 <details style="border: 2px solid #e0e0e0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
                     <summary style="cursor: pointer; font-weight: 600; color: #333; font-size: 1rem;">
-                        401(k)
+                        401(k) or 403(b)
                     </summary>
 
-                    <div style="margin-top: 1rem;">
-                        <div style="border-bottom: 1px solid #f0f0f0; margin-bottom: 1rem; padding-bottom: 1rem;">
-                            <h4 style="margin: 0 0 0.75rem 0; color: #555; font-size: 0.95rem; font-weight: 600;">Income</h4>
+                    <div style="margin-top: 0.75rem;">
+                        <div style="border-bottom: 1px solid #f0f0f0; margin-bottom: 0.75rem; padding-bottom: 0.75rem;">
+                            <h4 style="margin: 0 0 0.5rem 0; color: #555; font-size: 0.95rem; font-weight: 600;">Income</h4>
 
                             <div style="margin-bottom: 0.75rem;">
                                 <label style="display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem;">
@@ -174,7 +174,7 @@ def update_roth_contribution(value):
                                     <input
                                         type="number"
                                         value={annual_income.value}
-                                        @input={update_annual_income($event.target.value)}
+                                        @input={update_annual_income}
                                         style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                                         placeholder="100000"
                                         step="1000"
@@ -182,29 +182,29 @@ def update_roth_contribution(value):
                                 </div>
                             </div>
 
-                            <div style="margin-bottom: 0.75rem;">
-                                <label style="display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem;">
+                            <div style="margin-bottom: 0.5rem;">
+                                <label style="display: block; margin-bottom: 0.25rem; color: #555; font-weight: 500; font-size: 0.9rem;">
                                     Expected Income Growth
                                 </label>
                                 <div style="position: relative; display: flex; align-items: center;">
                                     <input
                                         type="number"
                                         value={expected_income_growth.value}
-                                        @input={update_income_growth($event.target.value)}
+                                        @input={update_income_growth}
                                         style="width: 100%; padding: 0.6rem 1.5rem 0.6rem 0.6rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                                         placeholder="3.0"
                                         step="0.5"
                                     />
                                     <span style="position: absolute; right: 10px; color: #666;">% per year</span>
                                 </div>
-                                <div style="margin-top: 0.3rem; font-size: 0.8rem; color: #666;">
+                                <div style="margin-top: 0.2rem; font-size: 0.8rem; color: #666;">
                                     Average salary increases over time
                                 </div>
                             </div>
                         </div>
 
                         <div style="margin-bottom: 0.75rem;">
-                            <label style="display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem;">
+                            <label style="display: block; margin-bottom: 0.25rem; color: #555; font-weight: 500; font-size: 0.9rem;">
                                 Current Balance
                             </label>
                             <div style="position: relative; display: flex; align-items: center;">
@@ -212,7 +212,7 @@ def update_roth_contribution(value):
                                 <input
                                     type="number"
                                     value={balance_401k.value}
-                                    @input={update_balance_401k($event.target.value)}
+                                    @input={update_balance_401k}
                                     style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                                     placeholder="0"
                                     step="1000"
@@ -221,14 +221,14 @@ def update_roth_contribution(value):
                         </div>
 
                         <div style="margin-bottom: 0.75rem;">
-                            <label style="display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem;">
+                            <label style="display: block; margin-bottom: 0.25rem; color: #555; font-weight: 500; font-size: 0.9rem;">
                                 Annual Contribution
                             </label>
                             <div style="position: relative; display: flex; align-items: center;">
                                 <input
                                     type="number"
                                     value={contribution_401k_percent.value}
-                                    @input={update_contribution_401k($event.target.value)}
+                                    @input={update_contribution_401k}
                                     style="width: 100%; padding: 0.6rem 1.5rem 0.6rem 0.6rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                                     placeholder="0"
                                     step="0.5"
@@ -252,7 +252,7 @@ def update_roth_contribution(value):
                                         <input
                                             type="number"
                                             value={employer_match_percent.value}
-                                            @input={update_employer_match_percent($event.target.value)}
+                                            @input={update_employer_match_percent}
                                             style="width: 100%; padding: 0.5rem 1.3rem 0.5rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; font-family: inherit; background: white;"
                                             placeholder="50"
                                             step="1"
@@ -268,7 +268,7 @@ def update_roth_contribution(value):
                                         <input
                                             type="number"
                                             value={employer_match_limit.value}
-                                            @input={update_employer_match_limit($event.target.value)}
+                                            @input={update_employer_match_limit}
                                             style="width: 100%; padding: 0.5rem 1.3rem 0.5rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; font-family: inherit; background: white;"
                                             placeholder="6"
                                             step="0.5"
@@ -294,9 +294,9 @@ def update_roth_contribution(value):
                         Roth IRA
                     </summary>
 
-                    <div style="margin-top: 1rem;">
+                    <div style="margin-top: 0.75rem;">
                         <div style="margin-bottom: 0.75rem;">
-                            <label style="display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem;">
+                            <label style="display: block; margin-bottom: 0.25rem; color: #555; font-weight: 500; font-size: 0.9rem;">
                                 Current Balance
                             </label>
                             <div style="position: relative; display: flex; align-items: center;">
@@ -304,7 +304,7 @@ def update_roth_contribution(value):
                                 <input
                                     type="number"
                                     value={balance_roth.value}
-                                    @input={update_balance_roth($event.target.value)}
+                                    @input={update_balance_roth}
                                     style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                                     placeholder="0"
                                     step="1000"
@@ -313,7 +313,7 @@ def update_roth_contribution(value):
                         </div>
 
                         <div style="margin-bottom: 0.75rem;">
-                            <label style="display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem;">
+                            <label style="display: block; margin-bottom: 0.25rem; color: #555; font-weight: 500; font-size: 0.9rem;">
                                 Annual Contribution
                             </label>
                             <div style="position: relative; display: flex; align-items: center;">
@@ -321,7 +321,7 @@ def update_roth_contribution(value):
                                 <input
                                     type="number"
                                     value={annual_roth_contribution.value}
-                                    @input={update_roth_contribution($event.target.value)}
+                                    @input={update_roth_contribution}
                                     style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
                                     placeholder="0"
                                     step="500"

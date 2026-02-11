@@ -454,21 +454,13 @@ def toggle_roth_section():
                     </div>
 
                     <div style="padding: 1rem; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-radius: 6px; color: white;">
-                        <div style="font-size: 0.85rem; opacity: 0.9;">Pre-Tax Savings Rate</div>
-                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">{'{:.1f}'.format((calc_annual_401k_contribution() / annual_income.value * 100) if annual_income.value > 0 else 0)}%</div>
-                        <div style="font-size: 0.8rem; opacity: 0.8;">401(k) contributions</div>
-                    </div>
-
-                    <div style="padding: 1rem; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-radius: 6px; color: white;">
-                        <div style="font-size: 0.85rem; opacity: 0.9;">Post-Tax Savings Rate</div>
-                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">{'{:.1f}'.format(($annual_roth_contribution / annual_income.value * 100) if annual_income.value > 0 else 0)}%</div>
-                        <div style="font-size: 0.8rem; opacity: 0.8;">Roth IRA contributions</div>
-                    </div>
-
-                    <div style="padding: 1rem; background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); border-radius: 6px; color: white;">
-                        <div style="font-size: 0.85rem; opacity: 0.9;">Employer Match Rate</div>
-                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">{'{:.1f}'.format((calc_annual_employer_match() / annual_income.value * 100) if annual_income.value > 0 else 0)}%</div>
-                        <div style="font-size: 0.8rem; opacity: 0.8;">Free money from employer</div>
+                        <div style="font-size: 0.85rem; opacity: 0.9;">Total Savings Rate</div>
+                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">{'{:.1f}'.format(((calc_annual_401k_contribution() + $annual_roth_contribution + calc_annual_employer_match()) / annual_income.value * 100) if annual_income.value > 0 else 0)}%</div>
+                        <div style="font-size: 0.75rem; opacity: 0.85; line-height: 1.4;">
+                            Pre-tax: {'{:.1f}'.format((calc_annual_401k_contribution() / annual_income.value * 100) if annual_income.value > 0 else 0)}% •
+                            Post-tax: {'{:.1f}'.format(($annual_roth_contribution / annual_income.value * 100) if annual_income.value > 0 else 0)}% •
+                            Match: {'{:.1f}'.format((calc_annual_employer_match() / annual_income.value * 100) if annual_income.value > 0 else 0)}%
+                        </div>
                     </div>
                 </div>
             </div>

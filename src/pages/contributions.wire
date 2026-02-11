@@ -19,14 +19,20 @@ employer_match_limit = wire(7.0)
 balance_roth = wire(48000)
 annual_roth_contribution = wire(7500)
 
+# HSA reactive inputs
+balance_hsa = wire(4438)
+annual_hsa_contribution = wire(4400)
+
 # UI state - track which sections are open
 details_401k_open = wire(False)
 details_roth_open = wire(False)
+details_hsa_open = wire(False)
 
 # Limits (constants)
 limit_401k = 24500.00
 limit_401k_total = 72000.00
 limit_roth = 7500.00
+limit_hsa = 4400.00
 
 # Core calculation helpers (reused across functions)
 def calc_years_to_retirement():
@@ -61,7 +67,7 @@ def calc_annual_employer_match():
     return 0.0
 
 def calc_current_balance():
-    return balance_401k.value + balance_roth.value
+    return balance_401k.value + balance_roth.value + balance_hsa.value
 
 def calc_total_annual_contribution():
     return calc_annual_401k_contribution() + annual_roth_contribution.value
@@ -80,13 +86,13 @@ def calc_total_saved_by_retirement():
         year_match = calc_employer_match_for_year(year_income, year_401k_contrib)
 
         # Add contributions (principal only, no returns)
-        total_principal += min(year_401k_contrib + year_match, limit_401k_total) + annual_roth_contribution.value
+        total_principal += min(year_401k_contrib + year_match, limit_401k_total) + annual_roth_contribution.value + annual_hsa_contribution.value
 
     return total_principal
 
 def calc_projected_balance_at_retirement():
     """Calculate projected balance at retirement including investment returns."""
-    return calc_total_401k_by_retirement() + calc_total_roth_by_retirement()
+    return calc_total_401k_by_retirement() + calc_total_roth_by_retirement() + calc_total_hsa_by_retirement()
 
 def calc_total_401k_by_retirement():
     """Calculate total 401k balance at retirement including investment returns."""
@@ -166,6 +172,36 @@ def get_roth_contribution_status():
         percent_of_limit = int(annual_roth_contribution.value / limit_roth * 100)
         return f'{percent_of_limit}% of ${limit_roth:,.0f} limit'
 
+def calc_total_hsa_by_retirement():
+    """Calculate total HSA balance at retirement including investment returns."""
+    years = calc_years_to_retirement()
+    if years == 0:
+        return balance_hsa.value
+
+    return_rate = expected_investment_return.value / 100.0
+    balance = balance_hsa.value
+
+    for year in range(years):
+        # Apply investment returns
+        balance = balance * (1 + return_rate)
+
+        # Add annual contribution
+        balance += annual_hsa_contribution.value
+
+    return balance
+
+def calc_hsa_principal_by_retirement():
+    """Calculate HSA contributions only (principal, no returns) for breakdown display."""
+    return balance_hsa.value + (annual_hsa_contribution.value * calc_years_to_retirement())
+
+def get_hsa_contribution_status():
+    """Get status text for HSA contribution (maxed or percentage of limit)."""
+    if annual_hsa_contribution.value >= limit_hsa:
+        return ' ✓ Maxed!'
+    else:
+        percent_of_limit = int(annual_hsa_contribution.value / limit_hsa * 100)
+        return f'{percent_of_limit}% of ${limit_hsa:,.0f} limit'
+
 @derived
 def calc_chart_data():
     """Generate chart data as JSON string for the Chart.js visualization."""
@@ -177,16 +213,19 @@ def calc_chart_data():
     # Calculate cumulative balances year by year, accounting for income growth
     yearly_401k_balance = []  # 401k with returns
     yearly_roth_balance = []  # Roth with returns
+    yearly_hsa_balance = []  # HSA with returns
     yearly_total_balance = []  # Total contributions (principal only)
-    yearly_projected_balance = []  # Total with returns (401k + Roth)
+    yearly_projected_balance = []  # Total with returns (401k + Roth + HSA)
 
     # Track contributions (principal only)
     cumulative_401k_contributions = balance_401k.value
     cumulative_roth_contributions = balance_roth.value
+    cumulative_hsa_contributions = balance_hsa.value
 
     # Track balances with investment returns
     balance_401k_with_returns = balance_401k.value
     balance_roth_with_returns = balance_roth.value
+    balance_hsa_with_returns = balance_hsa.value
 
     for year_index in range(num_years):
         # Calculate contributions for this year (skip first year as it's current balance)
@@ -198,20 +237,24 @@ def calc_chart_data():
             # Add this year's contributions to principal totals
             cumulative_401k_contributions += year_401k_contrib + year_match
             cumulative_roth_contributions += annual_roth_contribution.value
+            cumulative_hsa_contributions += annual_hsa_contribution.value
 
             # Apply investment returns to each account separately, then add new contributions
             balance_401k_with_returns = balance_401k_with_returns * (1 + return_rate) + year_401k_contrib + year_match
             balance_roth_with_returns = balance_roth_with_returns * (1 + return_rate) + annual_roth_contribution.value
+            balance_hsa_with_returns = balance_hsa_with_returns * (1 + return_rate) + annual_hsa_contribution.value
 
         yearly_401k_balance.append(round(balance_401k_with_returns, 2))
         yearly_roth_balance.append(round(balance_roth_with_returns, 2))
-        yearly_total_balance.append(round(cumulative_401k_contributions + cumulative_roth_contributions, 2))
-        yearly_projected_balance.append(round(balance_401k_with_returns + balance_roth_with_returns, 2))
+        yearly_hsa_balance.append(round(balance_hsa_with_returns, 2))
+        yearly_total_balance.append(round(cumulative_401k_contributions + cumulative_roth_contributions + cumulative_hsa_contributions, 2))
+        yearly_projected_balance.append(round(balance_401k_with_returns + balance_roth_with_returns + balance_hsa_with_returns, 2))
 
     data = {
         "years": years_range,
         "yearly_401k": yearly_401k_balance,
         "yearly_roth": yearly_roth_balance,
+        "yearly_hsa": yearly_hsa_balance,
         "yearly_total": yearly_total_balance,
         "yearly_projected": yearly_projected_balance
     }
@@ -263,14 +306,44 @@ def update_roth_contribution(event):
     """Handle Roth contribution with limit cap."""
     annual_roth_contribution.value = min(parse_formatted_number(event.value), limit_roth)
 
-# UI toggle handlers
+# HSA handlers
+update_balance_hsa = make_formatted_number_handler(balance_hsa)
+
+def update_hsa_contribution(event):
+    """Handle HSA contribution with limit cap."""
+    annual_hsa_contribution.value = min(parse_formatted_number(event.value), limit_hsa)
+
+# UI toggle handlers - only one section open at a time
 def toggle_401k_section():
-    details_401k_open.value = not details_401k_open.value
+    was_open = details_401k_open.value
+    details_401k_open.value = not was_open
+    if not was_open:
+        details_roth_open.value = False
+        details_hsa_open.value = False
 
 def toggle_roth_section():
-    details_roth_open.value = not details_roth_open.value
+    was_open = details_roth_open.value
+    details_roth_open.value = not was_open
+    if not was_open:
+        details_401k_open.value = False
+        details_hsa_open.value = False
+
+def toggle_hsa_section():
+    was_open = details_hsa_open.value
+    details_hsa_open.value = not was_open
+    if not was_open:
+        details_401k_open.value = False
+        details_roth_open.value = False
 
 ---
+<style>
+    /* Smooth accordion transitions - managed by JavaScript */
+    details > div {
+        overflow: hidden;
+        transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+    }
+</style>
+
 <div>
 <section>
     <div style="margin-bottom: 1rem;">
@@ -352,7 +425,7 @@ def toggle_roth_section():
                                     <input
                                         type="text"
                                         class="dollar-input"
-                                        value={annual_income}
+                                        data-initial-value={annual_income}
                                         @input={update_annual_income}
                                         style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; margin: 0;"
                                         placeholder="83,592"
@@ -391,7 +464,7 @@ def toggle_roth_section():
                                 <input
                                     type="text"
                                     class="dollar-input"
-                                    value={balance_401k}
+                                    data-initial-value={balance_401k}
                                     @input={update_balance_401k}
                                     style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; margin: 0;"
                                     placeholder="0"
@@ -481,7 +554,7 @@ def toggle_roth_section():
                                 <input
                                     type="text"
                                     class="dollar-input"
-                                    value={balance_roth}
+                                    data-initial-value={balance_roth}
                                     @input={update_balance_roth}
                                     style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; margin: 0;"
                                     placeholder="0"
@@ -498,7 +571,7 @@ def toggle_roth_section():
                                 <input
                                     type="text"
                                     class="dollar-input"
-                                    value={annual_roth_contribution}
+                                    data-initial-value={annual_roth_contribution}
                                     @input={update_roth_contribution}
                                     style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; margin: 0;"
                                     placeholder="0"
@@ -506,6 +579,51 @@ def toggle_roth_section():
                             </div>
                             {$if annual_roth_contribution.value > 0}
                             <div style="margin-top: 0.3rem; font-size: 0.8rem; color: #666;">{get_roth_contribution_status()}</div>
+                            {/if}
+                        </div>
+                    </div>
+                </details>
+
+                <details open={details_hsa_open} style="border: 2px solid #e0e0e0; border-radius: 8px; margin-bottom: 1rem;">
+                    <summary @click={toggle_hsa_section} style="cursor: pointer; font-weight: 600; color: #333; font-size: 1rem; padding: 1rem; display: block; list-style: none;">
+                        HSA (Health Savings Account)
+                    </summary>
+
+                    <div style="padding: 0 1rem 1rem 1rem;">
+                        <div style="margin-bottom: 0.75rem;">
+                            <label style="display: block; margin-bottom: 0.25rem; color: #555; font-weight: 500; font-size: 0.9rem;">
+                                Current Balance
+                            </label>
+                            <div style="position: relative; display: flex; align-items: center;">
+                                <span style="position: absolute; left: 10px; color: #666;">$</span>
+                                <input
+                                    type="text"
+                                    class="dollar-input"
+                                    data-initial-value={balance_hsa}
+                                    @input={update_balance_hsa}
+                                    style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; margin: 0;"
+                                    placeholder="0"
+                                />
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 0.75rem;">
+                            <label style="display: block; margin-bottom: 0.25rem; color: #555; font-weight: 500; font-size: 0.9rem;">
+                                Annual Contribution
+                            </label>
+                            <div style="position: relative; display: flex; align-items: center;">
+                                <span style="position: absolute; left: 10px; color: #666;">$</span>
+                                <input
+                                    type="text"
+                                    class="dollar-input"
+                                    data-initial-value={annual_hsa_contribution}
+                                    @input={update_hsa_contribution}
+                                    style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; margin: 0;"
+                                    placeholder="0"
+                                />
+                            </div>
+                            {$if annual_hsa_contribution.value > 0}
+                            <div style="margin-top: 0.3rem; font-size: 0.8rem; color: #666;">{get_hsa_contribution_status()}</div>
                             {/if}
                         </div>
                     </div>
@@ -534,10 +652,10 @@ def toggle_roth_section():
 
                     <div style="padding: 1rem; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-radius: 6px; color: white;">
                         <div style="font-size: 0.85rem; opacity: 0.9;">Total Savings Rate</div>
-                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">{'{:.1f}'.format(((calc_annual_401k_contribution() + annual_roth_contribution.value + calc_annual_employer_match()) / annual_income.value * 100) if annual_income.value > 0 else 0)}%</div>
+                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">{'{:.1f}'.format(((calc_annual_401k_contribution() + annual_roth_contribution.value + annual_hsa_contribution.value + calc_annual_employer_match()) / annual_income.value * 100) if annual_income.value > 0 else 0)}%</div>
                         <div style="font-size: 0.75rem; opacity: 0.85; line-height: 1.4;">
-                            Pre-tax: {'{:.1f}'.format((calc_annual_401k_contribution() / annual_income.value * 100) if annual_income.value > 0 else 0)}% • 
-                            Post-tax: {'{:.1f}'.format((annual_roth_contribution.value / annual_income.value * 100) if annual_income.value > 0 else 0)}% • 
+                            Pre-tax: {'{:.1f}'.format(((calc_annual_401k_contribution() + annual_hsa_contribution.value) / annual_income.value * 100) if annual_income.value > 0 else 0)}% •
+                            Post-tax: {'{:.1f}'.format((annual_roth_contribution.value / annual_income.value * 100) if annual_income.value > 0 else 0)}% •
                             Employer Match: {'{:.1f}'.format((calc_annual_employer_match() / annual_income.value * 100) if annual_income.value > 0 else 0)}%
                         </div>
                     </div>
@@ -564,6 +682,16 @@ def toggle_roth_section():
                     </div>
                     <div style="height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden;">
                         <div style="height: 100%; background: linear-gradient(90deg, #f093fb, #f5576c); width: {min(100, (calc_total_roth_by_retirement() / calc_projected_balance_at_retirement() * 100) if calc_projected_balance_at_retirement() > 0 else 0)}%;"></div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                        <span style="color: #666; font-size: 0.9rem;">HSA</span>
+                        <span style="font-weight: 600; font-size: 0.9rem;">${'{:,.0f}'.format(calc_total_hsa_by_retirement())}</span>
+                    </div>
+                    <div style="height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden;">
+                        <div style="height: 100%; background: linear-gradient(90deg, #4bc0c0, #36a2a2); width: {min(100, (calc_total_hsa_by_retirement() / calc_projected_balance_at_retirement() * 100) if calc_projected_balance_at_retirement() > 0 else 0)}%;"></div>
                     </div>
                 </div>
 
@@ -625,6 +753,17 @@ def toggle_roth_section():
                         data: chartData.yearly_roth,
                         borderColor: 'rgb(240, 147, 251)',
                         backgroundColor: 'rgba(240, 147, 251, 0.1)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'HSA Balance',
+                        data: chartData.yearly_hsa,
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
                         borderWidth: 3,
                         fill: false,
                         tension: 0.3,
@@ -807,10 +946,104 @@ def toggle_roth_section():
             });
         }
 
+        // Special clear-on-focus for dollar inputs with comma formatting
+        function addDollarInputBehavior(inputs) {
+            inputs.forEach(input => {
+                // Format on page load from data attribute
+                const initialValue = input.dataset.initialValue;
+                if (initialValue && initialValue.trim() !== '') {
+                    const numericValue = initialValue.replace(/[^\d]/g, '');
+                    if (numericValue) {
+                        input.value = parseInt(numericValue, 10).toLocaleString('en-US');
+                    }
+                }
+
+                input.addEventListener('focus', function() {
+                    this.dataset.oldValue = this.value;
+                    this.placeholder = this.value;
+                    this.value = '';
+                });
+
+                input.addEventListener('blur', function() {
+                    // If empty, restore old value
+                    if (this.value === '' && this.dataset.oldValue) {
+                        this.value = this.dataset.oldValue;
+                    } else if (this.value !== '') {
+                        // Format the current value with commas
+                        const numericValue = this.value.replace(/[^\d]/g, '');
+                        if (numericValue) {
+                            this.value = parseInt(numericValue, 10).toLocaleString('en-US');
+                        }
+                    }
+                    delete this.dataset.oldValue;
+                });
+            });
+        }
+
         // Apply clear-on-focus to all input types
         addClearOnFocusBehavior(document.querySelectorAll('.percent-input'));
         addClearOnFocusBehavior(document.querySelectorAll('.number-input'));
-        addClearOnFocusBehavior(dollarInputs);
+        addDollarInputBehavior(dollarInputs);
+
+        // Smooth accordion animations
+        document.querySelectorAll('details').forEach(details => {
+            const content = details.querySelector('div');
+            if (!content) return;
+
+            // Store the actual height
+            let actualHeight = 0;
+
+            // Measure height when opening
+            const measureHeight = () => {
+                if (details.open) {
+                    content.style.maxHeight = 'none';
+                    actualHeight = content.scrollHeight;
+                    content.style.maxHeight = '0px';
+                    // Force reflow
+                    content.offsetHeight;
+                    requestAnimationFrame(() => {
+                        content.style.maxHeight = actualHeight + 'px';
+                    });
+                }
+            };
+
+            // Watch for open attribute changes
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'open') {
+                        if (details.open) {
+                            // Opening
+                            content.style.maxHeight = '0px';
+                            content.style.opacity = '0';
+                            requestAnimationFrame(() => {
+                                content.style.transition = 'max-height 0.3s ease-out, opacity 0.3s ease-out';
+                                actualHeight = content.scrollHeight;
+                                content.style.maxHeight = actualHeight + 'px';
+                                content.style.opacity = '1';
+                            });
+                        } else {
+                            // Closing
+                            content.style.transition = 'max-height 0.3s ease-out, opacity 0.3s ease-out';
+                            content.style.maxHeight = content.scrollHeight + 'px';
+                            requestAnimationFrame(() => {
+                                content.style.maxHeight = '0px';
+                                content.style.opacity = '0';
+                            });
+                        }
+                    }
+                });
+            });
+
+            observer.observe(details, { attributes: true });
+
+            // Initial setup for open details
+            if (details.open) {
+                content.style.maxHeight = 'none';
+            } else {
+                content.style.maxHeight = '0px';
+                content.style.opacity = '0';
+            }
+        });
     });
 </script>
 </div>

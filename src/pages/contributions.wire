@@ -66,6 +66,29 @@ def calc_annual_employer_match():
         return min(match, limit_401k_total - contrib)
     return 0.0
 
+def calc_savings_rate_at_age(age):
+    """Calculate the savings rate at a specific age, accounting for income growth."""
+    years = max(0, age - current_age.value)
+    if years == 0:
+        # If already at retirement age, use current values
+        if annual_income.value > 0:
+            total_contrib = calc_annual_401k_contribution() + calc_annual_employer_match() + annual_roth_contribution.value + annual_hsa_contribution.value
+            return (total_contrib / annual_income.value) * 100
+        return 0.0
+
+    # Calculate income and contributions in the final year
+    final_year_income = calc_year_income(years - 1)
+    if final_year_income <= 0:
+        return 0.0
+
+    final_401k_contrib = calc_401k_contribution_for_income(final_year_income)
+    final_match = calc_employer_match_for_year(final_year_income, final_401k_contrib)
+
+    # Roth IRA and HSA are fixed dollar amounts
+    total_final_contrib = min(final_401k_contrib + final_match, limit_401k_total) + annual_roth_contribution.value + annual_hsa_contribution.value
+
+    return (total_final_contrib / final_year_income) * 100
+
 def calc_current_balance():
     return balance_401k.value + balance_roth.value + balance_hsa.value
 
@@ -773,8 +796,23 @@ def toggle_hsa_section():
                     </div>
 
                     <div style="padding: 1rem; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-radius: 6px; color: white;">
-                        <div style="font-size: 0.85rem; opacity: 0.9;">Total Savings Rate</div>
-                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">{'{:.1f}'.format(((calc_annual_401k_contribution() + annual_roth_contribution.value + annual_hsa_contribution.value + calc_annual_employer_match()) / annual_income.value * 100) if annual_income.value > 0 else 0)}%</div>
+                        <div style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 0.5rem;">Total Savings Rate</div>
+                        {$if calc_years_to_retirement() > 0}
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                            <div style="flex: 1;">
+                                <div style="font-size: 0.7rem; opacity: 0.75; margin-bottom: 0.2rem;">Current Rate</div>
+                                <div style="font-size: 1.8rem; font-weight: bold;">{'{:.1f}'.format(((calc_annual_401k_contribution() + annual_roth_contribution.value + annual_hsa_contribution.value + calc_annual_employer_match()) / annual_income.value * 100) if annual_income.value > 0 else 0)}%</div>
+                            </div>
+                            <div style="flex: 1; text-align: right;">
+                                <div style="font-size: 0.7rem; opacity: 0.75; margin-bottom: 0.2rem;">At Age {planned_retirement_age.value - 5}</div>
+                                <div style="font-size: 1.8rem; font-weight: bold;">{'{:.1f}'.format(calc_savings_rate_at_age(planned_retirement_age.value - 5))}%</div>
+                            </div>
+                        </div>
+                        {$else}
+                        <div style="font-size: 2rem; font-weight: bold; margin: 0.25rem 0;">
+                            {'{:.1f}'.format(((calc_annual_401k_contribution() + annual_roth_contribution.value + annual_hsa_contribution.value + calc_annual_employer_match()) / annual_income.value * 100) if annual_income.value > 0 else 0)}%
+                        </div>
+                        {/if}
                         <div style="font-size: 0.75rem; opacity: 0.85; line-height: 1.4;">
                             Pre-tax: {'{:.1f}'.format(((calc_annual_401k_contribution() + calc_annual_employer_match() + annual_hsa_contribution.value) / annual_income.value * 100) if annual_income.value > 0 else 0)}% • 
                             Post-tax: {'{:.1f}'.format((annual_roth_contribution.value / annual_income.value * 100) if annual_income.value > 0 else 0)}%

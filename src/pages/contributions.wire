@@ -499,17 +499,27 @@ def toggle_hsa_section():
                                 <label style="display: block; margin-bottom: 0.25rem; color: #555; font-weight: 500; font-size: 0.9rem;">
                                     Expected Income Growth
                                 </label>
-                                <div style="position: relative; display: flex; align-items: center;">
+                                <div style="position: relative; display: flex; align-items: center; margin-bottom: 0.5rem;">
                                     <span style="position: absolute; left: 10px; color: #666;">%</span>
                                     <input
                                         type="number"
                                         class="percent-input"
+                                        id="income-growth-input"
                                         value={expected_income_growth}
                                         @input={update_income_growth}
                                         style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.8rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; margin: 0;"
                                         step="0.5"
                                     />
                                 </div>
+                                <input
+                                    type="range"
+                                    id="income-growth-slider"
+                                    min="0"
+                                    max="10"
+                                    step="0.5"
+                                    value={expected_income_growth}
+                                    style="width: 100%; cursor: pointer;"
+                                />
                                 <div style="margin-top: 0.2rem; font-size: 0.8rem; color: #666;">
                                     Average salary increase over time (per year)
                                 </div>
@@ -1080,6 +1090,85 @@ def toggle_hsa_section():
         addClearOnFocusBehavior(document.querySelectorAll('.percent-input'));
         addClearOnFocusBehavior(document.querySelectorAll('.number-input'));
         addDollarInputBehavior(dollarInputs);
+
+        // Synchronize income growth slider with input field
+        const incomeGrowthInput = document.getElementById('income-growth-input');
+        const incomeGrowthSlider = document.getElementById('income-growth-slider');
+
+        if (incomeGrowthInput && incomeGrowthSlider) {
+            // Update input value visually while dragging (no PyWire update yet)
+            incomeGrowthSlider.addEventListener('input', function() {
+                incomeGrowthInput.value = this.value;
+            });
+
+            // Only trigger PyWire update when user releases the slider
+            incomeGrowthSlider.addEventListener('change', function() {
+                // Dispatch input event to trigger PyWire's handler
+                incomeGrowthInput.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+
+            // Update slider when input changes (clamped to slider range)
+            incomeGrowthInput.addEventListener('input', function() {
+                const value = parseFloat(this.value) || 0;
+                // Update slider, but clamp to its range (0-10)
+                incomeGrowthSlider.value = Math.max(0, Math.min(10, value));
+            });
+        }
+
+        // Defer PyWire updates for all inputs until blur (finished typing)
+        const allInputs = document.querySelectorAll('.number-input, .percent-input, .dollar-input');
+
+        allInputs.forEach(input => {
+            let pendingUpdate = false;
+
+            // Intercept input events in capture phase before PyWire sees them
+            input.addEventListener('input', function(e) {
+                // Allow our own dispatched final update events through
+                if (e.isFinalUpdate) return;
+
+                // For dollar inputs, apply real-time comma formatting manually
+                if (input.classList.contains('dollar-input')) {
+                    const cursorPosition = this.selectionStart;
+                    const oldValue = this.value;
+
+                    // Remove all non-digit characters
+                    const numericValue = oldValue.replace(/[^\d]/g, '');
+
+                    // Format with commas
+                    let formattedValue = '';
+                    if (numericValue) {
+                        formattedValue = parseInt(numericValue, 10).toLocaleString('en-US');
+                    }
+
+                    // Update the display value
+                    this.value = formattedValue;
+
+                    // Calculate new cursor position
+                    const commasBeforeOld = (oldValue.slice(0, cursorPosition).match(/,/g) || []).length;
+                    const commasBeforeNew = (formattedValue.slice(0, cursorPosition).match(/,/g) || []).length;
+                    const newCursorPosition = cursorPosition + (commasBeforeNew - commasBeforeOld);
+
+                    // Restore cursor position
+                    this.setSelectionRange(newCursorPosition, newCursorPosition);
+                }
+
+                // Mark that we have a pending update
+                pendingUpdate = true;
+                // Stop the event from reaching PyWire's handler
+                e.stopImmediatePropagation();
+            }, true);
+
+            // When user finishes typing (blur), trigger the PyWire update
+            input.addEventListener('blur', function() {
+                if (pendingUpdate) {
+                    pendingUpdate = false;
+                    // Dispatch a new input event that PyWire will process
+                    const event = new Event('input', { bubbles: true });
+                    event.isFinalUpdate = true;
+                    this.dispatchEvent(event);
+                }
+            });
+        });
 
         // Smooth accordion animations with manual control
         const allDetails = document.querySelectorAll('details');

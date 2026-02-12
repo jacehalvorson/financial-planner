@@ -46,7 +46,7 @@
         " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 12px rgba(0,0,0,0.15)'"
            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
             <div style="color: white;">
-                <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">🏦 Withdrawals</h2>
+                <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">🏦 Withdrawals (COMING SOON)</h2>
                 <p style="margin: 0; opacity: 0.9; font-size: 0.95rem;">Plan and track your retirement withdrawals and distribution strategy.</p>
             </div>
         </a>
@@ -62,7 +62,7 @@
         " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 12px rgba(0,0,0,0.15)'"
            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
             <div style="color: white;">
-                <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">🏥 Medical Receipts</h2>
+                <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">🏥 Medical Receipts (COMING SOON)</h2>
                 <p style="margin: 0; opacity: 0.9; font-size: 0.95rem;">Store and organize your medical expenses and HSA-eligible receipts.</p>
             </div>
         </a>

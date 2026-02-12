@@ -23,6 +23,11 @@ annual_roth_contribution = wire(7500)
 balance_hsa = wire(4438)
 annual_hsa_contribution = wire(4400)
 
+# Accordion state
+details_401k_open = wire(False)
+details_roth_open = wire(False)
+details_hsa_open = wire(False)
+
 # Limits (constants)
 limit_401k = 24500.00
 limit_401k_total = 72000.00
@@ -308,6 +313,16 @@ def update_hsa_contribution(event):
     """Handle HSA contribution with limit cap."""
     annual_hsa_contribution.value = min(parse_formatted_number(event.value), limit_hsa)
 
+# Accordion toggle functions
+def toggle_401k_section():
+    details_401k_open.value = not details_401k_open.value
+
+def toggle_roth_section():
+    details_roth_open.value = not details_roth_open.value
+
+def toggle_hsa_section():
+    details_hsa_open.value = not details_hsa_open.value
+
 ---
 <style>
     /* Smooth accordion transitions - managed by JavaScript */
@@ -436,7 +451,7 @@ def update_hsa_contribution(event):
                             class="number-input"
                             value={planned_retirement_age}
                             @input={update_retirement_age}
-                            style="width: 100%; padding: 0.6rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit;"
+                            style="width: 100%; padding: 0.6rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; margin: 0;"
                         />
                     </div>
                     <div>
@@ -457,8 +472,8 @@ def update_hsa_contribution(event):
                     </div>
                 </div>
 
-                <details style="border: 2px solid #e0e0e0; border-radius: 8px; margin-bottom: 1rem;">
-                    <summary style="cursor: pointer; font-weight: 600; color: #333; font-size: 1rem; padding: 1rem; display: block; list-style: none; margin: 0;">
+                <details open={details_401k_open} style="border: 2px solid #e0e0e0; border-radius: 8px; margin-bottom: 1rem;">
+                    <summary @click={toggle_401k_section} style="cursor: pointer; font-weight: 600; color: #333; font-size: 1rem; padding: 1rem; display: block; list-style: none; margin: 0;">
                         401(k)
                     </summary>
 
@@ -581,8 +596,8 @@ def update_hsa_contribution(event):
                     </div>
                 </details>
 
-                <details style="border: 2px solid #e0e0e0; border-radius: 8px; margin-bottom: 1rem;">
-                    <summary style="cursor: pointer; font-weight: 600; color: #333; font-size: 1rem; padding: 1rem; display: block; list-style: none; margin: 0;">
+                <details open={details_roth_open} style="border: 2px solid #e0e0e0; border-radius: 8px; margin-bottom: 1rem;">
+                    <summary @click={toggle_roth_section} style="cursor: pointer; font-weight: 600; color: #333; font-size: 1rem; padding: 1rem; display: block; list-style: none; margin: 0;">
                         Roth IRA
                     </summary>
 
@@ -624,8 +639,8 @@ def update_hsa_contribution(event):
                     </div>
                 </details>
 
-                <details style="border: 2px solid #e0e0e0; border-radius: 8px; margin-bottom: 1rem;">
-                    <summary style="cursor: pointer; font-weight: 600; color: #333; font-size: 1rem; padding: 1rem; display: block; list-style: none; margin: 0;">
+                <details open={details_hsa_open} style="border: 2px solid #e0e0e0; border-radius: 8px; margin-bottom: 1rem;">
+                    <summary @click={toggle_hsa_section} style="cursor: pointer; font-weight: 600; color: #333; font-size: 1rem; padding: 1rem; display: block; list-style: none; margin: 0;">
                         HSA (Health Savings Account)
                     </summary>
 
@@ -1054,7 +1069,7 @@ def update_hsa_contribution(event):
             content.style.overflow = 'hidden';
 
             // Initial setup
-            if (details.open) {
+            if (details.hasAttribute('open')) {
                 content.style.maxHeight = content.scrollHeight + 'px';
                 content.style.opacity = '1';
             } else {
@@ -1062,55 +1077,74 @@ def update_hsa_contribution(event):
                 content.style.opacity = '0';
             }
 
-            // Intercept clicks to animate before state changes
+            // Track animation state
+            let isAnimating = false;
+
+            // Intercept clicks on summary for closing animations
             summary.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
+                // If this is a synthetic event, prevent default but let it propagate to PyWire
+                if (e.isSynthetic) {
+                    e.preventDefault();
+                    return;
+                }
 
                 const isOpen = details.hasAttribute('open');
 
-                if (!isOpen) {
-                    // Close all other accordions with animation
-                    allDetails.forEach(other => {
-                        if (other !== details && other.hasAttribute('open')) {
-                            const otherContent = other.querySelector('div');
-                            if (otherContent) {
-                                // Get the current computed height instead of scrollHeight
-                                const currentHeight = window.getComputedStyle(otherContent).height;
-                                otherContent.style.maxHeight = currentHeight;
-                                otherContent.offsetHeight; // Force reflow
-                                setTimeout(() => {
-                                    otherContent.style.maxHeight = '0px';
-                                    otherContent.style.opacity = '0';
-                                }, 10);
-                                setTimeout(() => other.removeAttribute('open'), 310);
-                            }
-                        }
-                    });
+                if (isOpen && !isAnimating) {
+                    // CLOSING - intercept, animate, then propagate to PyWire
+                    e.preventDefault();
+                    e.stopPropagation();
+                    isAnimating = true;
 
-                    // Open this accordion
-                    details.setAttribute('open', '');
+                    // Get current height and animate to closed
                     const height = content.scrollHeight;
-                    content.style.maxHeight = '0px';
-                    content.style.opacity = '0';
-                    content.offsetHeight;
-                    setTimeout(() => {
-                        content.style.maxHeight = height + 'px';
-                        content.style.opacity = '1';
-                    }, 10);
-                } else {
-                    // Close this accordion
-                    // Get the current computed height instead of scrollHeight to prevent snapping
-                    const currentHeight = window.getComputedStyle(content).height;
-                    content.style.maxHeight = currentHeight;
+                    content.style.maxHeight = height + 'px';
                     content.offsetHeight; // Force reflow
-                    setTimeout(() => {
+
+                    requestAnimationFrame(() => {
                         content.style.maxHeight = '0px';
                         content.style.opacity = '0';
-                    }, 10);
-                    setTimeout(() => details.removeAttribute('open'), 310);
+                    });
+
+                    // After animation, update DOM and trigger PyWire state update
+                    setTimeout(() => {
+                        details.removeAttribute('open');
+                        isAnimating = false;
+
+                        // Dispatch synthetic click for PyWire to handle
+                        const syntheticClick = new MouseEvent('click', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window
+                        });
+                        syntheticClick.isSynthetic = true;
+                        summary.dispatchEvent(syntheticClick);
+                    }, 300); // Match transition duration
                 }
-            }, true);
+                // For opening, let event propagate normally to PyWire
+            }, true); // Capture phase to intercept before PyWire
+
+            // Watch for PyWire changing the 'open' attribute (for opening animations)
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'open') {
+                        if (details.hasAttribute('open') && !isAnimating) {
+                            // Opening - animate from 0 to full height
+                            const height = content.scrollHeight;
+                            content.style.maxHeight = '0px';
+                            content.style.opacity = '0';
+                            content.offsetHeight; // Force reflow
+                            requestAnimationFrame(() => {
+                                content.style.maxHeight = height + 'px';
+                                content.style.opacity = '1';
+                            });
+                        }
+                        // Closing is handled by click interceptor, not here
+                    }
+                });
+            });
+
+            observer.observe(details, { attributes: true });
         });
     });
 </script>

@@ -290,14 +290,41 @@ def make_formatted_number_handler(wire_var):
         wire_var.value = parse_formatted_number(event.value)
     return handler
 
-# Input change handlers
-update_current_age = make_int_handler(current_age, 35)
-update_retirement_age = make_int_handler(planned_retirement_age, 65)
-update_annual_income = make_formatted_number_handler(annual_income)
+# Input change handlers with validation
+def update_current_age(event):
+    """Handle current age with constraint that it must be <= retirement age."""
+    new_value = int(event.value) if event.value else 35
+    current_age.value = max(0, min(new_value, planned_retirement_age.value, 122))
+
+def update_retirement_age(event):
+    """Handle retirement age with constraint that it must be >= current age."""
+    new_value = int(event.value) if event.value else 65
+    planned_retirement_age.value = max(current_age.value, min(new_value, 122))
+
+def update_annual_income(event):
+    """Handle annual income and adjust 401k percentage if it exceeds dollar limit."""
+    annual_income.value = max(0, parse_formatted_number(event.value))
+
+    # Adjust 401k percentage if it exceeds the dollar limit
+    if annual_income.value > 0:
+        dollar_amount = annual_income.value * (contribution_401k_percent.value / 100.0)
+        if dollar_amount > limit_401k:
+            contribution_401k_percent.value = (limit_401k / annual_income.value) * 100.0
+
 update_income_growth = make_float_handler(expected_income_growth)
 update_investment_return = make_float_handler(expected_investment_return)
 update_balance_401k = make_formatted_number_handler(balance_401k)
-update_contribution_401k = make_float_handler(contribution_401k_percent)
+
+def update_contribution_401k(event):
+    """Handle 401k contribution percentage with dollar limit cap."""
+    new_percent = float(event.value) if event.value else 0.0
+
+    # Calculate max allowed percentage based on dollar limit
+    max_percent = 100.0
+    if annual_income.value > 0:
+        max_percent = min(100.0, (limit_401k / annual_income.value) * 100.0)
+
+    contribution_401k_percent.value = max(0, min(new_percent, max_percent))
 update_employer_match_percent = make_float_handler(employer_match_percent)
 update_employer_match_limit = make_float_handler(employer_match_limit)
 update_balance_roth = make_formatted_number_handler(balance_roth)
@@ -435,7 +462,9 @@ def toggle_hsa_section():
                         </label>
                         <input
                             class="number-input"
+                            id="current-age-input"
                             value={current_age}
+                            max={planned_retirement_age}
                             @input={update_current_age}
                             style="width: 100%; padding: 0.6rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; margin: 0;"
                         />
@@ -448,6 +477,7 @@ def toggle_hsa_section():
                             class="number-input"
                             id="retirement-age-input"
                             value={planned_retirement_age}
+                            min={current_age}
                             @input={update_retirement_age}
                             style="width: 100%; padding: 0.6rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; margin: 0;"
                         />
@@ -500,6 +530,7 @@ def toggle_hsa_section():
                                 <input
                                     type="text"
                                     class="dollar-input"
+                                    id="annual-income-input"
                                     data-initial-value={annual_income}
                                     @input={update_annual_income}
                                     style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; margin: 0;"
@@ -652,7 +683,7 @@ def toggle_hsa_section():
                                     type="range"
                                     id="roth-contribution-slider"
                                     min="0"
-                                    max="7500"
+                                    max={limit_roth}
                                     step="100"
                                     value={annual_roth_contribution}
                                     style="width: 100%; cursor: pointer; margin: 0;"
@@ -707,7 +738,7 @@ def toggle_hsa_section():
                                     type="range"
                                     id="hsa-contribution-slider"
                                     min="0"
-                                    max="4400"
+                                    max={limit_hsa}
                                     step="100"
                                     value={annual_hsa_contribution}
                                     style="width: 100%; cursor: pointer; margin: 0;"
@@ -1124,6 +1155,21 @@ def toggle_hsa_section():
             });
 
             contribution401kSlider.addEventListener('change', function() {
+                // Validate against 401k dollar limit before dispatching
+                const annualIncomeInput = document.getElementById('annual-income-input');
+                const annualIncomeValue = parseFloat(annualIncomeInput?.value?.replace(/[^\d]/g, '')) || 0;
+                let maxPercent = 20;
+                if (annualIncomeValue > 0) {
+                    const limit401k = 24500;
+                    maxPercent = Math.min(20, (limit401k / annualIncomeValue) * 100);
+                }
+
+                // Cap the slider and input to the maximum allowed percentage
+                const cappedValue = Math.max(0, Math.min(parseFloat(this.value), maxPercent));
+                this.value = cappedValue;
+                contribution401kInput.value = cappedValue;
+
+                // Dispatch to PyWire
                 const event = new Event('input', { bubbles: true });
                 event.isFinalUpdate = true;
                 contribution401kInput.dispatchEvent(event);
@@ -1154,7 +1200,8 @@ def toggle_hsa_section():
 
             rothContributionInput.addEventListener('input', function() {
                 const value = parseFloat(this.value.replace(/[^\d]/g, '')) || 0;
-                rothContributionSlider.value = Math.max(0, Math.min(7500, value));
+                const limitRoth = 7500;
+                rothContributionSlider.value = Math.max(0, Math.min(limitRoth, value));
             });
         }
 
@@ -1177,7 +1224,8 @@ def toggle_hsa_section():
 
             hsaContributionInput.addEventListener('input', function() {
                 const value = parseFloat(this.value.replace(/[^\d]/g, '')) || 0;
-                hsaContributionSlider.value = Math.max(0, Math.min(4400, value));
+                const limitHsa = 4400;
+                hsaContributionSlider.value = Math.max(0, Math.min(limitHsa, value));
             });
         }
 
@@ -1243,13 +1291,22 @@ def toggle_hsa_section():
                     // Apply validation rules
                     switch(inputId) {
                         case 'current-age-input':
-                            value = Math.max(0, Math.min(value, 122));
+                            const retirementAgeValue = parseFloat(document.getElementById('retirement-age-input')?.value) || 122;
+                            value = Math.max(0, Math.min(value, retirementAgeValue, 122));
                             break;
                         case 'retirement-age-input':
-                            value = Math.max(0, Math.min(value, 122));
+                            const currentAgeValue = parseFloat(document.getElementById('current-age-input')?.value) || 0;
+                            value = Math.max(currentAgeValue, Math.min(value, 122));
                             break;
                         case 'contribution-401k-percent-input':
-                            value = Math.max(0, Math.min(value, 100));
+                            const annualIncomeInput = document.getElementById('annual-income-input');
+                            const annualIncomeValue = parseFloat(annualIncomeInput?.value?.replace(/[^\d]/g, '')) || 0;
+                            let maxPercent = 100;
+                            if (annualIncomeValue > 0) {
+                                const limit401k = 24500;
+                                maxPercent = Math.min(100, (limit401k / annualIncomeValue) * 100);
+                            }
+                            value = Math.max(0, Math.min(value, maxPercent));
                             break;
                         case 'employer-match-percent-input':
                             value = Math.max(0, value);
@@ -1258,10 +1315,12 @@ def toggle_hsa_section():
                             value = Math.max(0, Math.min(value, 100));
                             break;
                         case 'roth-contribution-input':
-                            value = Math.min(value, 7500);
+                            const limitRoth = 7500;
+                            value = Math.min(value, limitRoth);
                             break;
                         case 'hsa-contribution-input':
-                            value = Math.min(value, 4400);
+                            const limitHsa = 4400;
+                            value = Math.min(value, limitHsa);
                             break;
                     }
 

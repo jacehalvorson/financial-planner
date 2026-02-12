@@ -10,18 +10,18 @@ expected_income_growth = wire(6.15)
 expected_investment_return = wire(7.0)
 
 # 401k reactive inputs
-balance_401k = wire(41000)
+balance_401k = wire(0)
 contribution_401k_percent = wire(8.0)
 employer_match_percent = wire(87.5)
 employer_match_limit = wire(7.0)
 
 # Roth IRA reactive inputs
-balance_roth = wire(48000)
-annual_roth_contribution = wire(7500)
+balance_roth = wire(0)
+annual_roth_contribution = wire(0)
 
 # HSA reactive inputs
-balance_hsa = wire(4438)
-annual_hsa_contribution = wire(4400)
+balance_hsa = wire(0)
+annual_hsa_contribution = wire(0)
 
 # Accordion state
 details_401k_open = wire(False)
@@ -349,7 +349,6 @@ def toggle_hsa_section():
     }
 
     /* Fix input text visibility in dark mode */
-    input[type="number"],
     input[type="text"],
     .percent-input,
     .dollar-input,
@@ -435,7 +434,6 @@ def toggle_hsa_section():
                             Current Age
                         </label>
                         <input
-                            type="number"
                             class="number-input"
                             value={current_age}
                             @input={update_current_age}
@@ -447,7 +445,6 @@ def toggle_hsa_section():
                             Retirement Age
                         </label>
                         <input
-                            type="number"
                             class="number-input"
                             id="retirement-age-input"
                             value={planned_retirement_age}
@@ -462,7 +459,6 @@ def toggle_hsa_section():
                         <div style="position: relative; display: flex; align-items: center;">
                             <span style="position: absolute; left: 10px; color: #666;">%</span>
                             <input
-                                type="number"
                                 class="percent-input"
                                 value={expected_investment_return}
                                 @input={update_investment_return}
@@ -479,54 +475,6 @@ def toggle_hsa_section():
                     </summary>
 
                     <div style="padding: 0 1rem;">
-                        <div style="border-bottom: 1px solid #f0f0f0; margin-bottom: 0.75rem; padding-bottom: 0.75rem;">
-                            <div style="margin-bottom: 0.75rem;">
-                                <label style="display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem;">
-                                    Annual Income
-                                </label>
-                                <div style="position: relative; display: flex; align-items: center;">
-                                    <span style="position: absolute; left: 10px; color: #666;">$</span>
-                                    <input
-                                        type="text"
-                                        class="dollar-input"
-                                        data-initial-value={annual_income}
-                                        @input={update_annual_income}
-                                        style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; margin: 0;"
-                                    />
-                                </div>
-                            </div>
-
-                            <div style="margin-bottom: 0.5rem;">
-                                <label style="display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem;">
-                                    Expected Income Growth
-                                </label>
-                                <div style="border: 2px solid #e0e0e0; border-radius: 6px; padding: 0.4rem 0.6rem 0.3rem; background: white;">
-                                    <div style="position: relative; margin-bottom: 0.15rem;">
-                                        <span style="position: absolute; left: 0; top: 50%; transform: translateY(-50%); color: #666; font-size: 0.9rem;">%</span>
-                                        <input
-                                            class="percent-input"
-                                            id="income-growth-input"
-                                            value={expected_income_growth}
-                                            @input={update_income_growth}
-                                            style="width: 100%; padding: 0.45rem 0 0.45rem 1.2rem; border: none; font-size: 0.9rem; font-family: inherit; margin: 0; outline: none; line-height: 1.2; height: auto;"
-                                        />
-                                    </div>
-                                    <input
-                                        type="range"
-                                        id="income-growth-slider"
-                                        min="0"
-                                        max="10"
-                                        step="0.5"
-                                        value={expected_income_growth}
-                                        style="width: 100%; cursor: pointer; margin: 0;"
-                                    />
-                                </div>
-                                <div style="margin-top: 0.3rem; font-size: 0.8rem; color: #666;">
-                                    Average salary increase over time (per year)
-                                </div>
-                            </div>
-                        </div>
-
                         <div style="margin-bottom: 0.75rem;">
                             <label style="display: block; margin-bottom: 0.25rem; color: #555; font-weight: 500; font-size: 0.9rem;">
                                 Current Balance
@@ -545,13 +493,55 @@ def toggle_hsa_section():
 
                         <div style="margin-bottom: 0.75rem;">
                             <label style="display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem;">
+                                Annual Income
+                            </label>
+                            <div style="position: relative; display: flex; align-items: center;">
+                                <span style="position: absolute; left: 10px; color: #666;">$</span>
+                                <input
+                                    type="text"
+                                    class="dollar-input"
+                                    data-initial-value={annual_income}
+                                    @input={update_annual_income}
+                                    style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 1.5rem; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; margin: 0;"
+                                />
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 0.5rem;">
+                            <label style="display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem;">
+                                Expected Income Growth (per year)
+                            </label>
+                            <div style="border: 2px solid #e0e0e0; border-radius: 6px; padding: 0.4rem 0.6rem 0.3rem; background: white;">
+                                <div style="position: relative; margin-bottom: 0.15rem;">
+                                    <span style="position: absolute; left: 0; top: 50%; transform: translateY(-50%); color: #666; font-size: 0.9rem;">%</span>
+                                    <input
+                                        class="percent-input"
+                                        id="income-growth-input"
+                                        value={expected_income_growth}
+                                        @input={update_income_growth}
+                                        style="width: 100%; padding: 0.45rem 0 0.45rem 1.2rem; border: none; font-size: 0.9rem; font-family: inherit; margin: 0; outline: none; line-height: 1.2; height: auto;"
+                                    />
+                                </div>
+                                <input
+                                    type="range"
+                                    id="income-growth-slider"
+                                    min="0"
+                                    max="10"
+                                    step="0.5"
+                                    value={expected_income_growth}
+                                    style="width: 100%; cursor: pointer; margin: 0;"
+                                />
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 0.75rem;">
+                            <label style="display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem;">
                                 Annual Contribution
                             </label>
                             <div style="border: 2px solid #e0e0e0; border-radius: 6px; padding: 0.4rem 0.6rem 0.3rem; background: white;">
                                 <div style="position: relative; margin-bottom: 0.15rem;">
                                     <span style="position: absolute; left: 0; top: 50%; transform: translateY(-50%); color: #666; font-size: 0.9rem;">%</span>
                                     <input
-                                        type="number"
                                         class="percent-input"
                                         id="contribution-401k-percent-input"
                                         value={contribution_401k_percent}
@@ -586,7 +576,6 @@ def toggle_hsa_section():
                                     <div style="position: relative; display: flex; align-items: center;">
                                         <span style="position: absolute; left: 8px; color: #666; font-size: 0.85rem;">%</span>
                                         <input
-                                            type="number"
                                             class="percent-input"
                                             id="employer-match-percent-input"
                                             value={employer_match_percent}
@@ -1253,8 +1242,11 @@ def toggle_hsa_section():
 
                     // Apply validation rules
                     switch(inputId) {
+                        case 'current-age-input':
+                            value = Math.max(0, Math.min(value, 122));
+                            break;
                         case 'retirement-age-input':
-                            value = Math.min(value, 122);
+                            value = Math.max(0, Math.min(value, 122));
                             break;
                         case 'contribution-401k-percent-input':
                             value = Math.max(0, Math.min(value, 100));

@@ -952,8 +952,8 @@ def toggle_filing_status():
                                 <div style="font-size: 1.8rem; font-weight: bold;">{'{:.1f}'.format(((calc_annual_401k_contribution() + annual_roth_contribution.value + annual_hsa_contribution.value + calc_annual_employer_match()) / annual_income.value * 100) if annual_income.value > 0 else 0)}%</div>
                             </div>
                             <div style="flex: 1; text-align: right;">
-                                <div style="font-size: 0.7rem; opacity: 0.75; margin-bottom: 0.2rem;">At Age {planned_retirement_age.value - 5}</div>
-                                <div style="font-size: 1.8rem; font-weight: bold;">{'{:.1f}'.format(calc_savings_rate_at_age(planned_retirement_age.value - 5))}%</div>
+                                <div style="font-size: 0.7rem; opacity: 0.75; margin-bottom: 0.2rem;">At Age {max(planned_retirement_age.value - 5, current_age)}</div>
+                                <div style="font-size: 1.8rem; font-weight: bold;">{'{:.1f}'.format(calc_savings_rate_at_age(max(planned_retirement_age.value - 5, current_age)))}%</div>
                             </div>
                         </div>
                         {$else}

@@ -180,14 +180,14 @@ safe_annual_withdrawal = projected_balance * 0.04
 <script>
     (function () {
         var COLORS = [
-            'rgba(78, 98, 200, 0.85)',
-            'rgba(40, 168, 96, 0.85)',
-            'rgba(255, 193, 7, 0.85)',
-            'rgba(220, 53, 69, 0.85)',
-            'rgba(23, 162, 184, 0.85)',
-            'rgba(111, 66, 193, 0.85)',
-            'rgba(253, 126, 20, 0.85)',
-            'rgba(32, 201, 151, 0.85)',
+            'rgba(15,  76,  129, 0.85)',  // sapphire
+            'rgba(0,  140,  140, 0.85)',  // teal
+            'rgba(0,  130,   80, 0.85)',  // forest
+            'rgba(180, 120,  20, 0.85)',  // gold
+            'rgba(190,  70,  30, 0.85)',  // rust
+            'rgba(140,  30,  60, 0.85)',  // burgundy
+            'rgba(90,   50, 160, 0.85)',  // plum
+            'rgba(50,  100, 170, 0.85)',  // slate blue
         ];
 
         // --- Asset list state ---
@@ -198,6 +198,33 @@ safe_annual_withdrawal = projected_balance * 0.04
         function syncToPyWire() {
             hiddenInput.value = JSON.stringify(assets);
             hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+            recomputeChart();
+        }
+
+        function recomputeChart() {
+            if (!assets.length) {
+                if (chart) { chart.destroy(); chart = null; }
+                return;
+            }
+            var currentYear = new Date().getFullYear();
+            var nYears = 20;
+            var years = [];
+            for (var y = currentYear; y <= currentYear + nYears; y++) years.push(y);
+            var balances = assets.map(function (a) { return parseFloat(a.amount) || 0; });
+            var rates = assets.map(function (a) { return parseFloat(a.return_rate) || 0; });
+            var datasets = assets.map(function (a, k) {
+                return { label: a.name || ('Asset ' + (k + 1)), data: [] };
+            });
+            for (var i = 0; i <= nYears; i++) {
+                if (i > 0) {
+                    balances = balances.map(function (b, j) { return b * (1 + rates[j]); });
+                }
+                var total = balances.reduce(function (s, b) { return s + b; }, 0);
+                balances.forEach(function (b, j) {
+                    datasets[j].data.push(total > 0 ? Math.round(b / total * 1000) / 10 : 0);
+                });
+            }
+            renderChart({ years: years, datasets: datasets });
         }
 
         function renderAssetRows() {
@@ -206,14 +233,14 @@ safe_annual_withdrawal = projected_balance * 0.04
 
             assets.forEach(function (asset, i) {
                 var row = document.createElement('div');
-                row.style.cssText = 'display: grid; grid-template-columns: 2fr 2fr 1fr auto; gap: 0.75rem; align-items: center; padding: 0.6rem 0.5rem; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);';
+                row.style.cssText = 'display: grid; grid-template-columns: 2fr 2fr 1fr auto; gap: 0; column-gap: 0.75rem; align-items: center; padding: 0; border-radius: 8px;';
 
                 // --- Name input ---
                 var nameInput = document.createElement('input');
                 nameInput.type = 'text';
                 nameInput.value = asset.name;
                 nameInput.placeholder = 'Asset name';
-                nameInput.style.cssText = 'width: 100%; padding: 0.45rem 0.6rem; border: 1px solid #dee2e6; border-radius: 6px; font-size: 0.95rem; box-sizing: border-box;';
+                nameInput.style.cssText = 'width: 100%; padding: 0.45rem 0.6rem; border: 1px solid #dee2e6; border-radius: 6px; font-size: 0.95rem; box-sizing: border-box; margin: 0;';
                 nameInput.addEventListener('blur', function () {
                     assets[i].name = this.value.trim() || ('Asset ' + (i + 1));
                     syncToPyWire();
@@ -224,12 +251,12 @@ safe_annual_withdrawal = projected_balance * 0.04
                 amountWrapper.style.cssText = 'position: relative;';
                 var dollarSign = document.createElement('span');
                 dollarSign.textContent = '$';
-                dollarSign.style.cssText = 'position: absolute; left: 0.6rem; top: 50%; transform: translateY(-50%); color: #888; pointer-events: none; font-size: 0.95rem;';
+                dollarSign.style.cssText = 'position: absolute; left: 0.6rem; top: 50%; -webkit-transform: translateY(-50%); transform: translateY(-50%); color: #888; pointer-events: none; font-size: 0.95rem;';
                 var amountInput = document.createElement('input');
                 amountInput.type = 'text';
                 amountInput.value = asset.amount > 0 ? Math.round(asset.amount).toLocaleString('en-US') : '';
                 amountInput.placeholder = '0';
-                amountInput.style.cssText = 'width: 100%; padding: 0.45rem 0.6rem 0.45rem 1.4rem; border: 1px solid #dee2e6; border-radius: 6px; font-size: 0.95rem; box-sizing: border-box;';
+                amountInput.style.cssText = 'width: 100%; padding: 0.45rem 0.6rem 0.45rem 1.4rem; border: 1px solid #dee2e6; border-radius: 6px; font-size: 0.95rem; box-sizing: border-box; margin: 0;';
                 amountInput.addEventListener('focus', function () {
                     this.dataset.old = this.value;
                     this.placeholder = this.value || '0';
@@ -267,14 +294,14 @@ safe_annual_withdrawal = projected_balance * 0.04
                 rateInput.step = '0.1';
                 rateInput.min = '0';
                 rateInput.max = '100';
-                rateInput.style.cssText = 'width: 100%; padding: 0.45rem 1.6rem 0.45rem 0.6rem; border: 1px solid #dee2e6; border-radius: 6px; font-size: 0.95rem; box-sizing: border-box;';
+                rateInput.style.cssText = 'width: 100%; padding: 0.45rem 1.6rem 0.45rem 0.6rem; border: 1px solid #dee2e6; border-radius: 6px; font-size: 0.95rem; box-sizing: border-box; margin: 0;';
                 rateInput.addEventListener('blur', function () {
                     assets[i].return_rate = (parseFloat(this.value) || 0) / 100;
                     syncToPyWire();
                 });
                 var pctSign = document.createElement('span');
                 pctSign.textContent = '%';
-                pctSign.style.cssText = 'position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); color: #888; pointer-events: none; font-size: 0.95rem;';
+                pctSign.style.cssText = 'position: absolute; right: 0.6rem; top: 50%; -webkit-transform: translateY(-50%); transform: translateY(-50%); color: #888; pointer-events: none; font-size: 0.95rem;';
                 rateWrapper.appendChild(rateInput);
                 rateWrapper.appendChild(pctSign);
 
@@ -282,7 +309,7 @@ safe_annual_withdrawal = projected_balance * 0.04
                 var removeBtn = document.createElement('button');
                 removeBtn.textContent = '×';
                 removeBtn.title = 'Remove asset';
-                removeBtn.style.cssText = 'width: 2rem; height: 2rem; border: none; background: #fee2e2; color: #dc2626; border-radius: 6px; cursor: pointer; font-size: 1.2rem; line-height: 1; flex-shrink: 0;';
+                removeBtn.style.cssText = 'width: 2rem; height: 2rem; border: none; background: #fee2e2; color: #dc2626; border-radius: 6px; cursor: pointer; font-size: 1.2rem; line-height: 1; flex-shrink: 0; text-align: center; padding: 0 0 0.2rem 0;';
                 removeBtn.addEventListener('click', function () {
                     assets.splice(i, 1);
                     renderAssetRows();
@@ -314,15 +341,20 @@ safe_annual_withdrawal = projected_balance * 0.04
             if (chart) { chart.destroy(); chart = null; }
             if (!data || !data.datasets || !data.datasets.length || !data.years || !data.years.length) return;
             chart = new Chart(document.getElementById('withdrawalsChart'), {
-                type: 'bar',
+                type: 'line',
                 data: {
                     labels: data.years,
                     datasets: data.datasets.map(function (ds, i) {
+                        var color = COLORS[i % COLORS.length];
                         return {
                             label: ds.label,
                             data: ds.data,
-                            backgroundColor: COLORS[i % COLORS.length],
-                            borderWidth: 0,
+                            backgroundColor: color,
+                            borderColor: 'rgba(255,255,255,0.4)',
+                            borderWidth: 1,
+                            fill: true,
+                            pointRadius: 0,
+                            tension: 0.4,
                         };
                     }),
                 },
@@ -346,6 +378,7 @@ safe_annual_withdrawal = projected_balance * 0.04
                     plugins: {
                         legend: { position: 'top' },
                         tooltip: {
+                            mode: 'index',
                             callbacks: {
                                 label: function (ctx) { return ' ' + ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + '%'; },
                             },

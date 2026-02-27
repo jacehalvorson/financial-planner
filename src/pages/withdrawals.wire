@@ -1,5 +1,62 @@
 ---
+import json
 from datetime import datetime
+
+stocks_balance = wire(0.0)
+bonds_balance = wire(0.0)
+bills_balance = wire(0.0)
+
+def update_stocks(event):
+    try:
+        stocks_balance.value = float(str(event.value).replace(',', ''))
+    except (ValueError, TypeError):
+        stocks_balance.value = 0.0
+
+def update_bonds(event):
+    try:
+        bonds_balance.value = float(str(event.value).replace(',', ''))
+    except (ValueError, TypeError):
+        bonds_balance.value = 0.0
+
+def update_bills(event):
+    try:
+        bills_balance.value = float(str(event.value).replace(',', ''))
+    except (ValueError, TypeError):
+        bills_balance.value = 0.0
+
+STOCKS_RETURN = 0.10
+BONDS_RETURN  = 0.04
+BILLS_RETURN  = 0.015
+
+def calc_chart_data():
+    current_year = datetime.now().year
+    n_years = 65 - 45  # retirement_age - current_age
+    years = list(range(current_year, current_year + n_years + 1))
+
+    s, b, bi = stocks_balance.value, bonds_balance.value, bills_balance.value
+    stocks_pct, bonds_pct, bills_pct = [], [], []
+
+    for i in range(len(years)):
+        if i > 0:
+            s  *= (1 + STOCKS_RETURN)
+            b  *= (1 + BONDS_RETURN)
+            bi *= (1 + BILLS_RETURN)
+        total = s + b + bi
+        if total > 0:
+            stocks_pct.append(round(s  / total * 100, 1))
+            bonds_pct.append(round(b  / total * 100, 1))
+            bills_pct.append(round(bi / total * 100, 1))
+        else:
+            stocks_pct.append(0)
+            bonds_pct.append(0)
+            bills_pct.append(0)
+
+    return json.dumps({
+        'years': years,
+        'stocks': stocks_pct,
+        'bonds':  bonds_pct,
+        'bills':  bills_pct,
+    })
 
 # Sample withdrawal plan data
 current_age = 45
@@ -103,4 +160,204 @@ safe_annual_withdrawal = projected_balance * 0.04
             </ul>
         </div>
     </div>
+
+    <div style="margin-top: 3rem;">
+        <h2>Asset Balances</h2>
+        <p style="color: #666; margin-bottom: 1.5rem;">Enter the current dollar value of each asset to include in your withdrawal projection.</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem;">
+            <div style="padding: 1.5rem; background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <label style="display: block; font-weight: 600; color: #495057; margin-bottom: 0.5rem;">Stocks</label>
+                <div style="position: relative;">
+                    <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #666;">$</span>
+                    <input
+                        type="text"
+                        class="dollar-input"
+                        data-initial-value={stocks_balance.value}
+                        placeholder="0"
+                        @input={update_stocks}
+                        style="width: 100%; padding: 0.6rem 0.75rem 0.6rem 1.5rem; border: 1px solid #dee2e6; border-radius: 8px; font-size: 1rem; box-sizing: border-box;"
+                    />
+                </div>
+            </div>
+
+            <div style="padding: 1.5rem; background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <label style="display: block; font-weight: 600; color: #495057; margin-bottom: 0.5rem;">Bonds</label>
+                <div style="position: relative;">
+                    <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #666;">$</span>
+                    <input
+                        type="text"
+                        class="dollar-input"
+                        data-initial-value={bonds_balance.value}
+                        placeholder="0"
+                        @input={update_bonds}
+                        style="width: 100%; padding: 0.6rem 0.75rem 0.6rem 1.5rem; border: 1px solid #dee2e6; border-radius: 8px; font-size: 1rem; box-sizing: border-box;"
+                    />
+                </div>
+            </div>
+
+            <div style="padding: 1.5rem; background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <label style="display: block; font-weight: 600; color: #495057; margin-bottom: 0.5rem;">Bills</label>
+                <div style="position: relative;">
+                    <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #666;">$</span>
+                    <input
+                        type="text"
+                        class="dollar-input"
+                        data-initial-value={bills_balance.value}
+                        placeholder="0"
+                        @input={update_bills}
+                        style="width: 100%; padding: 0.6rem 0.75rem 0.6rem 1.5rem; border: 1px solid #dee2e6; border-radius: 8px; font-size: 1rem; box-sizing: border-box;"
+                    />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 3rem;">
+        <h2>Asset Allocation</h2>
+        <div $permanent id="chart-container" data-chart={calc_chart_data()} style="background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 1.5rem;">
+            <canvas id="withdrawalsChart" style="max-height: 400px;"></canvas>
+        </div>
+    </div>
 </section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    (function () {
+        // --- Dollar input behavior ---
+        const dollarInputs = document.querySelectorAll('.dollar-input');
+
+        dollarInputs.forEach(input => {
+            const initialValue = input.dataset.initialValue;
+            if (initialValue && parseFloat(initialValue) > 0) {
+                input.value = parseInt(initialValue, 10).toLocaleString('en-US');
+            }
+
+            input.addEventListener('focus', function () {
+                this.dataset.oldValue = this.value;
+                this.placeholder = this.value || '0';
+                this.value = '';
+            });
+
+            input.addEventListener('blur', function () {
+                if (this.value === '' && this.dataset.oldValue) {
+                    this.value = this.dataset.oldValue;
+                } else if (this.value !== '') {
+                    const numeric = parseInt(this.value.replace(/[^\d]/g, ''), 10);
+                    this.value = numeric > 0 ? numeric.toLocaleString('en-US') : '';
+                }
+                delete this.dataset.oldValue;
+            });
+        });
+
+        dollarInputs.forEach(input => {
+            let pendingUpdate = false;
+
+            input.addEventListener('input', function (e) {
+                if (e.isFinalUpdate) return;
+
+                const cursorPos = this.selectionStart;
+                const oldVal = this.value;
+                const numeric = oldVal.replace(/[^\d]/g, '');
+                const formatted = numeric ? parseInt(numeric, 10).toLocaleString('en-US') : '';
+                this.value = formatted;
+
+                const oldCommas = (oldVal.slice(0, cursorPos).match(/,/g) || []).length;
+                const newCommas = (formatted.slice(0, cursorPos).match(/,/g) || []).length;
+                this.setSelectionRange(cursorPos + (newCommas - oldCommas), cursorPos + (newCommas - oldCommas));
+
+                pendingUpdate = true;
+                e.stopImmediatePropagation();
+            }, true);
+
+            input.addEventListener('blur', function () {
+                if (pendingUpdate) {
+                    pendingUpdate = false;
+                    const event = new Event('input', { bubbles: true });
+                    event.isFinalUpdate = true;
+                    this.dispatchEvent(event);
+                }
+            });
+        });
+
+        // --- Doughnut chart ---
+        const container = document.getElementById('chart-container');
+        if (!container) return;
+
+        const initialData = JSON.parse(container.dataset.chart);
+        const ctx = document.getElementById('withdrawalsChart').getContext('2d');
+
+        const chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: initialData.years,
+                datasets: [
+                    {
+                        label: 'Stocks',
+                        data: initialData.stocks,
+                        backgroundColor: 'rgba(78, 98, 200, 0.85)',
+                        borderColor: 'rgb(78, 98, 200)',
+                        borderWidth: 0,
+                    },
+                    {
+                        label: 'Bonds',
+                        data: initialData.bonds,
+                        backgroundColor: 'rgba(40, 168, 96, 0.85)',
+                        borderColor: 'rgb(40, 168, 96)',
+                        borderWidth: 0,
+                    },
+                    {
+                        label: 'Bills',
+                        data: initialData.bills,
+                        backgroundColor: 'rgba(255, 193, 7, 0.85)',
+                        borderColor: 'rgb(255, 193, 7)',
+                        borderWidth: 0,
+                    },
+                ]
+            },
+            options: {
+                responsive: true,
+                animation: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { display: false },
+                        title: { display: true, text: 'Year' },
+                    },
+                    y: {
+                        stacked: true,
+                        min: 0,
+                        max: 100,
+                        ticks: { callback: v => v + '%' },
+                        title: { display: true, text: 'Allocation' },
+                    },
+                },
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%`,
+                        },
+                    },
+                },
+            },
+        });
+
+        // Watch for data-chart attribute changes and update the chart
+        const observer = new MutationObserver(function (mutations) {
+            mutations.forEach(function (mutation) {
+                console.log('Mutation observed:', mutation);
+                if (mutation.attributeName === 'data-chart') {
+                    const newData = JSON.parse(container.dataset.chart);
+                    chart.data.labels = newData.years;
+                    chart.data.datasets[0].data = newData.stocks;
+                    chart.data.datasets[1].data = newData.bonds;
+                    chart.data.datasets[2].data = newData.bills;
+                    chart.update();
+                }
+            });
+        });
+
+        observer.observe(container, { attributes: true });
+    })();
+</script>

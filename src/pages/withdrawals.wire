@@ -346,7 +346,6 @@ safe_annual_withdrawal = projected_balance * 0.04
         // Watch for data-chart attribute changes and update the chart
         const observer = new MutationObserver(function (mutations) {
             mutations.forEach(function (mutation) {
-                console.log('Mutation observed:', mutation);
                 if (mutation.attributeName === 'data-chart') {
                     const newData = JSON.parse(container.dataset.chart);
                     chart.data.labels = newData.years;

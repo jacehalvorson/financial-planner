@@ -763,7 +763,7 @@ def toggle_filing_status():
                             <div style="margin-top: 0.3rem; font-size: 0.8rem; color: #666;">
                                 Percentage of income
                             </div>
-                            <div $if={annual_income.value * (contribution_401k_percent.value / 100.0) > 0} style="margin-top: 0.3rem; font-size: 0.8rem; color: #666;">{get_401k_contribution_status()}</div>
+                            <div $if={annual_income.value * (contribution_401k_percent.value / 100.0) > 0}><div style="margin-top: 0.3rem; font-size: 0.8rem; color: #666;">{get_401k_contribution_status()}</div></div>
                         </div>
 
                         <div style="background: #f8f9fa; padding: 0.75rem; border-radius: 6px;">

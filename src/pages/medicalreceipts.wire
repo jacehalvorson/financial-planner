@@ -49,7 +49,10 @@ def make_text_handler(wire_var):
 
 def make_float_handler(wire_var):
     def handler(event):
-        wire_var.value = float(event.value) if event.value else 0.0
+        try:
+            wire_var.value = float(str(event.value).replace(',', '')) if event.value else 0.0
+        except (ValueError, TypeError):
+            wire_var.value = 0.0
         form_error.value = ""  # Clear error when user types
     return handler
 
@@ -102,8 +105,8 @@ def close_modal():
 def save_receipt():
     """Save new receipt to list"""
     # Validate required fields
-    if not form_date.value or not form_provider.value or not form_description.value:
-        form_error.value = "Please fill in all required fields (Date, Provider, and Description)"
+    if not form_date.value or not form_provider.value:
+        form_error.value = "Please fill in all required fields (Date and Provider)"
         return
 
     # Clear any previous errors
@@ -156,8 +159,8 @@ def edit_receipt(index):
 def update_receipt():
     """Update existing receipt"""
     # Validate
-    if not form_date.value or not form_provider.value or not form_description.value:
-        form_error.value = "Please fill in all required fields (Date, Provider, and Description)"
+    if not form_date.value or not form_provider.value:
+        form_error.value = "Please fill in all required fields (Date and Provider)"
         return
 
     # Clear any previous errors
@@ -529,9 +532,9 @@ def isReceiptsEmpty():
                             </span>
                         </td>
                         <td style="padding: 1rem; text-align: center;">
-                            <span $if={receipt.get('thumbnail')} style="cursor: pointer; font-size: 1.5rem;" title="View receipt image" onclick="showImagePreview('{receipt.get('thumbnail', '')}')">
+                            <span $if={receipt.get('thumbnail')}><span style="cursor: pointer; font-size: 1.5rem;" title="View receipt image" onclick="showImagePreview('{receipt.get('thumbnail', '')}')">
                                 🖼️
-                            </span>
+                            </span></span>
                         </td>
                         <td style="padding: 1rem; text-align: center;">
                             <button @click={edit_receipt(i)} style="padding: 0.25rem 0.75rem; background: #5568c0; border: 1.5px solid #5568c0; color: white; border-radius: 4px; cursor: pointer; margin-right: 0.5rem; font-size: 0.875rem;">
@@ -593,10 +596,10 @@ def isReceiptsEmpty():
         <h2 style="margin-top: 0; color: var(--pico-color, inherit);">{edit_mode and 'Edit Receipt' or 'Add New Receipt'}</h2>
 
         <!-- Error Message Display -->
-        <div $if={form_error} style="background: var(--pico-form-element-invalid-focus-color, #fee); border: 2px solid var(--pico-form-element-invalid-border-color, #a03040); color: var(--pico-form-element-invalid-border-color, #c33); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.95rem;">
+        <div $if={form_error}><div style="background: var(--pico-form-element-invalid-focus-color, #fee); border: 2px solid var(--pico-form-element-invalid-border-color, #a03040); color: var(--pico-form-element-invalid-border-color, #c33); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.95rem;">
             <strong style="font-weight: 600;">⚠️ Validation Error</strong>
             <div style="margin-top: 0.5rem;">{form_error}</div>
-        </div>
+        </div></div>
 
         <form @submit.prevent={handle_form_submit}>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -636,27 +639,29 @@ def isReceiptsEmpty():
             </div>
 
             <div style="margin-bottom: 1rem;">
-                <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--pico-color, inherit);">Description *</label>
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--pico-color, inherit);">Description</label>
                 <textarea
-                    class="form-input-magic"
                     value={form_description}
                     @input={update_form_description}
                     placeholder="e.g., Annual physical exam"
-                    required
                     rows="3"
                 ></textarea>
             </div>
 
             <div style="margin-bottom: 1rem;">
-                <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--pico-color, inherit);">Amount ($) *</label>
-                <input
-                    type="number"
-                    value={form_amount}
-                    @input={update_form_amount}
-                    min="0.01"
-                    step="0.01"
-                    required
-                />
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--pico-color, inherit);">Amount *</label>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <span style="position: absolute; left: 0.75rem; color: var(--pico-muted-color, #777); pointer-events: none; font-size: 1rem; line-height: 1; z-index: 1;">$</span>
+                    <input
+                        type="text"
+                        class="amount-dollar-input"
+                        style="padding-left: 1.75rem; width: 100%; margin: 0;"
+                        data-initial-value={form_amount}
+                        placeholder="0.00"
+                        @input={update_form_amount}
+                        required
+                    />
+                </div>
             </div>
 
             <div style="display: flex; gap: 2rem; margin-bottom: 1rem;">
@@ -693,12 +698,12 @@ def isReceiptsEmpty():
                 </button>
                 <small style="display: block; margin-top: 0.25rem; color: var(--pico-muted-color, #666);">Max 2MB. Image will be compressed automatically.</small>
 
-                <div $if={form_image_thumbnail} style="margin-top: 1rem; position: relative; display: inline-block;">
+                <div $if={form_image_thumbnail}><div style="margin-top: 1rem; position: relative; display: inline-block;">
                     <img src={form_image_thumbnail} style="max-width: 200px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" />
                     <button type="button" @click={clear_image} style="position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; padding: 0; background: #a03040; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 0.875rem;">
                         ✕
                     </button>
-                </div>
+                </div></div>
             </div>
 
             <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
@@ -751,6 +756,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.target.value = e.target.dataset.oldValue;
             }
             delete e.target.dataset.oldValue;
+            // Re-sync the wire to whatever is displayed — handles the case where the
+            // user deleted all their typing and form-input-magic restored the old value
+            // without firing an input event.
+            var ev = new Event('input', { bubbles: true });
+            e.target.dispatchEvent(ev);
         }
     }, true);
 
@@ -987,6 +997,51 @@ function exportPDF() {
 
 <script>
 (function () {
+    // Amount dollar input: focus → move value to placeholder, clear
+    document.addEventListener('focus', function (e) {
+        var input = e.target;
+        if (!input.classList || !input.classList.contains('amount-dollar-input')) return;
+        if (input.value) {
+            input.dataset.preFocusValue = input.value;
+            input.placeholder = input.value;
+            input.value = '';
+        }
+    }, true);
+
+    // Live comma formatting for the amount input (deferred PyWire update until blur)
+    document.addEventListener('input', function (e) {
+        var input = e.target;
+        if (!input.classList || !input.classList.contains('amount-dollar-input')) return;
+        if (e.isFinalUpdate) return;
+        var raw = input.value.replace(/[^\d.]/g, '');
+        var parts = raw.split('.');
+        if (parts.length > 2) raw = parts[0] + '.' + parts[1];
+        var dotIdx = raw.indexOf('.');
+        var intPart = dotIdx >= 0 ? raw.slice(0, dotIdx) : raw;
+        var decPart = dotIdx >= 0 ? raw.slice(dotIdx) : '';
+        input.value = (intPart ? parseInt(intPart, 10).toLocaleString('en-US') : '') + decPart;
+        e.stopImmediatePropagation();
+    }, true);
+
+    // On blur: restore if empty, finalize to X,XXX.XX, dispatch to PyWire
+    document.addEventListener('blur', function (e) {
+        var input = e.target;
+        if (!input.classList || !input.classList.contains('amount-dollar-input')) return;
+        if (input.value === '' && input.dataset.preFocusValue) {
+            input.value = input.dataset.preFocusValue;
+        }
+        delete input.dataset.preFocusValue;
+        var raw = input.value.replace(/[^\d.]/g, '');
+        var num = parseFloat(raw) || 0;
+        input.value = num > 0
+            ? num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : '';
+        input.placeholder = '0.00';
+        var ev = new Event('input', { bubbles: true });
+        ev.isFinalUpdate = true;
+        input.dispatchEvent(ev);
+    }, true);
+
     window._closeModal = function () {
         var backdrop = document.querySelector('.modal-backdrop');
         var card = document.querySelector('.modal-card');
@@ -998,14 +1053,45 @@ function exportPDF() {
         }, 175);
     };
 
-    // When the modal reopens (display flips to flex), strip stale closing classes
-    new MutationObserver(function () {
-        var backdrop = document.querySelector('.modal-backdrop');
-        if (backdrop && backdrop.style.display === 'flex') {
-            backdrop.classList.remove('closing');
-            var card = backdrop.querySelector('.modal-card');
-            if (card) card.classList.remove('closing');
-        }
+    // When the modal's display style changes, handle opening/animation states
+    new MutationObserver(function (mutations) {
+        mutations.forEach(function (m) {
+            if (!m.target.classList || !m.target.classList.contains('modal-backdrop')) return;
+            var backdrop = m.target;
+            if (backdrop.style.display === 'flex') {
+                backdrop.classList.remove('closing');
+                var card = backdrop.querySelector('.modal-card');
+                if (card) card.classList.remove('closing');
+
+                // Explicitly reset all form inputs when the modal opens.
+                // PyWire updates HTML attributes on re-render but DOM diffing may skip
+                // resetting the .value property on inputs the user previously modified.
+
+                // Text inputs with form-input-magic: reset value and clear stale oldValue
+                backdrop.querySelectorAll('.form-input-magic').forEach(function (inp) {
+                    delete inp.dataset.oldValue;
+                    inp.value = inp.getAttribute('value') || '';
+                    inp.placeholder = inp.getAttribute('placeholder') || '';
+                });
+
+                // Date input
+                var dateInput = backdrop.querySelector('input[type="date"]');
+                if (dateInput) dateInput.value = dateInput.getAttribute('value') || '';
+
+                // Textarea
+                var textarea = backdrop.querySelector('textarea');
+                if (textarea) textarea.value = textarea.getAttribute('value') || '';
+
+                // Amount input
+                var amountInput = backdrop.querySelector('.amount-dollar-input');
+                if (amountInput) {
+                    var num = parseFloat((amountInput.dataset.initialValue || '').replace(',', '')) || 0;
+                    amountInput.value = num > 0
+                        ? num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : '';
+                }
+            }
+        });
     }).observe(document.documentElement, { attributes: true, attributeFilter: ['style'], subtree: true });
 })();
 </script>

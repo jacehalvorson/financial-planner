@@ -575,9 +575,27 @@ def isReceiptsEmpty():
     </div>
 </div>
 
+<style>
+    @keyframes modal-overlay-in  { from { opacity:0; backdrop-filter:blur(0); } to { opacity:1; backdrop-filter:blur(7px); } }
+    @keyframes modal-overlay-out { from { opacity:1; backdrop-filter:blur(7px); } to { opacity:0; backdrop-filter:blur(0); } }
+    @keyframes modal-card-in {
+        0%   { opacity:0; transform:translateY(-56px) scale(0.93); }
+        60%  { opacity:1; transform:translateY(10px) scale(1.02); }
+        80%  { transform:translateY(-4px) scale(0.99); }
+        100% { transform:translateY(0) scale(1); }
+    }
+    @keyframes modal-card-out { from { opacity:1; transform:translateY(0) scale(1); } to { opacity:0; transform:translateY(-36px) scale(0.95); } }
+    .modal-backdrop { animation: modal-overlay-in 0.28s ease forwards; -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px); }
+    .modal-backdrop.closing { animation: modal-overlay-out 0.18s ease forwards; }
+    .modal-card { animation: modal-card-in 0.42s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+    .modal-card.closing { animation: modal-card-out 0.18s ease forwards; }
+</style>
+
 <!-- Modal Dialog -->
-<div $if={show_modal} style="position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); z-index: 1000;" @click.self={close_modal}>
-    <div style="background: var(--pico-card-background-color, white); padding: 2rem; max-width: 600px; margin: 0 auto; max-height: 90vh; overflow-y: auto; box-shadow: 0 -4px 20px rgba(0,0,0,0.3);">
+<div class="modal-backdrop" style="display: {'flex' if show_modal else 'none'}; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 9999; align-items: center; justify-content: center;" onclick="if(event.target===this)window._closeModal();">
+    <div class="modal-card" style="background: var(--pico-card-background-color, white); padding: 2rem; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; border-radius: 10px; box-shadow: 0 8px 40px rgba(0,0,0,0.45); position: relative;">
+        <button id="modal-close-x" @click={close_modal} style="display:none;"></button>
+        <button onclick="window._closeModal();" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #666; line-height: 1; padding: 0.25rem 0.5rem;">&times;</button>
         <h2 style="margin-top: 0; color: var(--pico-color, inherit);">{edit_mode and 'Edit Receipt' or 'Add New Receipt'}</h2>
 
         <!-- Error Message Display -->
@@ -693,7 +711,7 @@ def isReceiptsEmpty():
             </div>
 
             <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
-                <button type="button" @click={close_modal} style="padding: 0.75rem 1.5rem; background: var(--pico-secondary, #6c757d); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+                <button type="button" onclick="window._closeModal();" style="padding: 0.75rem 1.5rem; background: var(--pico-secondary, #6c757d); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
                     Cancel
                 </button>
                 <button type="submit" style="padding: 0.75rem 1.5rem; background: var(--pico-primary, #5568c0); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
@@ -976,3 +994,27 @@ function exportPDF() {
 }
 </script>
 
+<script>
+(function () {
+    window._closeModal = function () {
+        var backdrop = document.querySelector('.modal-backdrop');
+        var card = document.querySelector('.modal-card');
+        if (backdrop) backdrop.classList.add('closing');
+        if (card) card.classList.add('closing');
+        setTimeout(function () {
+            var trigger = document.getElementById('modal-close-x');
+            if (trigger) trigger.click();
+        }, 175);
+    };
+
+    // When the modal reopens (display flips to flex), strip stale closing classes
+    new MutationObserver(function () {
+        var backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop && backdrop.style.display === 'flex') {
+            backdrop.classList.remove('closing');
+            var card = backdrop.querySelector('.modal-card');
+            if (card) card.classList.remove('closing');
+        }
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['style'], subtree: true });
+})();
+</script>

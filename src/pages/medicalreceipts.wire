@@ -143,22 +143,22 @@ def save_receipt():
     close_modal()
 
 def edit_receipt(index):
-    """Open modal in edit mode with receipt data"""
-    receipt = receipts.value[index]
-
-    edit_mode.value = True
-    edit_index.value = index
-    form_error.value = ""
-    form_date.value = receipt.get("date", "")
-    form_provider.value = receipt.get("provider", "")
-    form_category.value = receipt.get("category", "Medical")
-    form_description.value = receipt.get("description", "")
-    form_amount.value = receipt.get("amount", 0.0)
-    form_hsa_eligible.value = receipt.get("hsa_eligible", True)
-    form_reimbursed.value = receipt.get("reimbursed", False)
-    form_image_base64.value = receipt.get("image", "")
-    form_image_thumbnail.value = receipt.get("thumbnail", "")
-    show_modal.value = True
+    """Open edit modal for the receipt at the given list index"""
+    if 0 <= index < len(receipts.value):
+        receipt = receipts.value[index]
+        form_error.value = ""
+        form_date.value = receipt.get("date", "")
+        form_provider.value = receipt.get("provider", "")
+        form_category.value = receipt.get("category", "Medical")
+        form_description.value = receipt.get("description", "")
+        form_amount.value = receipt.get("amount", 0.0)
+        form_hsa_eligible.value = receipt.get("hsa_eligible", True)
+        form_reimbursed.value = receipt.get("reimbursed", False)
+        form_image_base64.value = receipt.get("image", "")
+        form_image_thumbnail.value = receipt.get("thumbnail", "")
+        edit_index.value = index
+        edit_mode.value = True
+        show_modal.value = True
 
 def update_receipt():
     """Update existing receipt"""
@@ -769,15 +769,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, true);
 
-    console.log("Loading receipts from storage...")
-
     // SAVE: Watch for changes and write to localStorage
     if (storageContainer) {
-        console.log("2")
         const observer = new MutationObserver((mutations) => {
-            console.log("3");
             mutations.forEach((mutation) => {
-                console.log("4");
                 if (mutation.type === 'attributes' && mutation.attributeName === 'data-state') {
                     const data = storageContainer.dataset.state;
                     localStorage.setItem('medical_receipts_data', data);

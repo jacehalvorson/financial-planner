@@ -12,11 +12,15 @@ A financial simulation web application built with PyWire that visualizes histori
 # Install/sync dependencies
 uv sync
 
-# Run development server (with hot-reload)
+# Run development server (with hot-reload, http://localhost:8000)
 uv run pywire dev
 
-# The dev server starts on http://localhost:8000 by default
+# Build and run in Docker (http://localhost:3000)
+docker build -t financial-simulation .
+docker run -p 3000:3000 financial-simulation
 ```
+
+The Docker image uses `pywire dev --no-tui --host 0.0.0.0` and serves over plain HTTP (no mkcert). Do not add mkcert to the Dockerfile — the container-generated certificate won't be trusted by the host browser.
 
 ## Architecture
 
@@ -37,7 +41,7 @@ This project uses **PyWire**, a Python web framework with path-based routing. Ke
 
 ### Route Structure
 
-```
+```text
 /                   -> src/pages/index.wire (landing page with feature cards)
 /globalmarket       -> src/pages/globalmarket.wire (country stock market data)
 /contributions      -> src/pages/contributions.wire (retirement contributions)
@@ -51,17 +55,20 @@ This project uses **PyWire**, a Python web framework with path-based routing. Ke
 ### Data Layer
 
 **Financial data utilities** ([financial_data.py](src/financial_data.py)):
+
 - Fetches stock market data via yfinance API (`get_sp500_returns`, `get_us_total_market_returns`, `get_global_market_returns`)
 - Provides inflation data with fallback to hardcoded values (`get_inflation_data`)
 - Returns data as `{dates: [], values: []}` with compounded values starting at 1.0
 
 **World Bank data utilities** ([worldbank_data.py](src/worldbank_data.py)):
+
 - Loads S&P Global Equity Indices from CSV file in `data/` directory
 - Provides country-specific stock market returns (`get_country_stock_returns`)
 - Lists 84+ countries with available data (`get_available_countries`)
 - Default focus countries defined in `DEFAULT_COUNTRIES` list
 
 **Database models** ([models.py](src/models.py)):
+
 - SQLAlchemy ORM with declarative base
 - `User` model: email, created_at
 - `Subscription` model: user_id, stripe_customer_id, status (linked to Stripe integration)
@@ -69,6 +76,7 @@ This project uses **PyWire**, a Python web framework with path-based routing. Ke
 ### Application Entry Point
 
 [main.py](src/main.py) creates the PyWire application instance with:
+
 - Pages directory: `src/pages`
 - PJAX enabled for SPA-like behavior
 - Debug mode on

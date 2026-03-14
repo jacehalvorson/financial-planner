@@ -11,12 +11,24 @@ A financial simulation web application that visualizes historical stock market p
 
 ## Quick Start
 
+### Local (requires Python + uv)
+
 ```bash
 # Install dependencies
 uv sync
 
 # Run development server (hot-reload, http://localhost:8000)
 uv run pywire dev
+```
+
+### Docker
+
+```bash
+# Build
+docker build -t financial-simulation .
+
+# Run (http://localhost:3000)
+docker run -p 3000:3000 financial-simulation
 ```
 
 ## Tech Stack

@@ -11,7 +11,41 @@ A financial simulation web application that visualizes historical stock market p
 
 ## Quick Start
 
+### Docker
+
+Install Docker Desktop from [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop) and ensure it is running before using the commands below.
+
+```bash
+git clone https://github.com/jacehalvorson/financial-simulation.git
+cd financial-simulation
+
+# Copy and configure environment variables
+cp .env.example .env
+
+# Edit .env and set a strong POSTGRES_PASSWORD,
+# then run the following:
+source .env
+
+# Start all services (available at http://localhost:3000 in a browser)
+# PyWire will detect changes in the src directory and hot reload
+docker compose up -d --build
+
+# View the status of the running services
+docker ps
+
+# Check the PyWire server logs
+docker logs $(docker ps | grep financial-simulation-app | cut -d' ' -f1)
+
+# Shut down all services
+docker compose down
+```
+
 ### Local (requires Python + uv)
+
+Alternatively, you can run the PyWire app on your local machine without
+functioning database or authentication.
+
+Install Python from [python.org/downloads](https://www.python.org/downloads), then install `uv` from [docs.astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/).
 
 ```bash
 # Install dependencies
@@ -21,17 +55,8 @@ uv sync
 uv run pywire dev
 ```
 
-### Docker
-
-```bash
-# Copy and configure environment variables
-cp .env.example .env
-# Edit .env and set a strong POSTGRES_PASSWORD
-source .env
-
-# Start the app and database (http://localhost:3000)
-docker compose up --build
-```
+> Note: Database and auth operations will not work when running the PyWire app alone.
+> Use Docker to run the fully functioning app.
 
 ## Tech Stack
 

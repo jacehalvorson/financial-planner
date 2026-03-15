@@ -1,18 +1,17 @@
 ---
 from pywire import wire, derived
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 import json
 import uuid
 
 # ===== REACTIVE STATE =====
 
-# Receipt list - main data store
+# Receipt list - main data store (keyed by UUID string, mirroring MedicalReceipt model)
 receipts = wire({})
 
 # Form state - individual scalars for each field
 form_date = wire(datetime.now().strftime("%Y-%m-%d"))
 form_provider = wire("")
-form_category = wire("Medical")
 form_description = wire("")
 form_amount = wire(0.0)
 form_hsa_eligible = wire(True)
@@ -27,7 +26,6 @@ edit_mode = wire(False)
 edit_id = wire("")
 
 # Filter/sort state
-filter_category = wire("All")
 filter_status = wire("All")
 sort_column = wire("date")
 sort_direction = wire("desc")
@@ -65,13 +63,11 @@ def make_bool_handler(wire_var):
 # Create handlers
 update_form_date = make_text_handler(form_date)
 update_form_provider = make_text_handler(form_provider)
-update_form_category = make_text_handler(form_category)
 update_form_description = make_text_handler(form_description)
 update_form_amount = make_float_handler(form_amount)
 update_form_hsa_eligible = make_bool_handler(form_hsa_eligible)
 update_form_reimbursed = make_bool_handler(form_reimbursed)
 update_tax_bracket = make_float_handler(user_tax_bracket)
-update_filter_category = make_text_handler(filter_category)
 update_filter_status = make_text_handler(filter_status)
 
 # ===== MODAL OPERATIONS =====
@@ -91,7 +87,6 @@ def reset_form():
     """Reset form fields to defaults — called only after a successful submit"""
     form_date.value = datetime.now().strftime("%Y-%m-%d")
     form_provider.value = ""
-    form_category.value = "Medical"
     form_description.value = ""
     form_amount.value = 0.0
     form_hsa_eligible.value = True
@@ -113,25 +108,24 @@ def save_receipt():
     # Clear any previous errors
     form_error.value = ""
 
-    # Create new receipt
+    # Create new receipt (fields match MedicalReceipt model; datetimes stored as ISO strings)
+    now = datetime.now(timezone.utc).isoformat()
     id = str(uuid.uuid4())
     new_receipt = {
         "id": id,
         "date": form_date.value,
         "provider": form_provider.value,
-        "category": form_category.value,
         "description": form_description.value,
         "amount": form_amount.value,
         "hsa_eligible": form_hsa_eligible.value,
         "reimbursed": form_reimbursed.value,
         "image": form_image_base64.value,
         "thumbnail": form_image_thumbnail.value,
-        "created_at": datetime.now().isoformat(),
-        "updated_at": datetime.now().isoformat(),
-        "reimbursed_at": datetime.now().isoformat() if form_reimbursed.value else None
+        "created_at": now,
+        "updated_at": now,
+        "reimbursed_at": now if form_reimbursed.value else None
     }
 
-    # Add to dictionary
     receipts.value.update({id: new_receipt})
 
     # Update localStorage
@@ -146,7 +140,6 @@ def edit_receipt(receipt):
     form_error.value = ""
     form_date.value = receipt.get("date", "")
     form_provider.value = receipt.get("provider", "")
-    form_category.value = receipt.get("category", "Medical")
     form_description.value = receipt.get("description", "")
     form_amount.value = receipt.get("amount", 0.0)
     form_hsa_eligible.value = receipt.get("hsa_eligible", True)
@@ -172,20 +165,23 @@ def update_receipt():
         form_error.value = "Receipt not found."
         return
 
-    # Replace in dictionary
+    # Replace in dictionary (fields match MedicalReceipt model; datetimes stored as ISO strings)
+    now = datetime.now(timezone.utc).isoformat()
+    reimbursed = form_reimbursed.value
+    prev_reimbursed_at = receipt.get("reimbursed_at")
     receipts.value[edit_id.value] = {
         "id": edit_id.value,
         "date": form_date.value,
         "provider": form_provider.value,
-        "category": form_category.value,
         "description": form_description.value,
         "amount": form_amount.value,
         "hsa_eligible": form_hsa_eligible.value,
-        "reimbursed": form_reimbursed.value,
+        "reimbursed": reimbursed,
         "image": form_image_base64.value,
         "thumbnail": form_image_thumbnail.value,
-        "created_at": receipt.get("created_at", datetime.now().isoformat()),
-        "updated_at": datetime.now().isoformat()
+        "created_at": receipt.get("created_at", now),
+        "updated_at": now,
+        "reimbursed_at": (now if reimbursed and not prev_reimbursed_at else prev_reimbursed_at if reimbursed else None)
     }
 
     # Update localStorage
@@ -212,7 +208,7 @@ def toggle_reimbursed(receipt):
     id = receipt.get("id", "")
     if not receipts.value.get(id) or not receipt.get("hsa_eligible", True):
         return
-    now = datetime.now().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     reimbursed = receipt.get("reimbursed", False)
     updated_receipt = receipt.copy()
     if not updated_receipt or len(updated_receipt) == 0:
@@ -228,7 +224,6 @@ def toggle_reimbursed(receipt):
 
 def handle_file_upload(event):
     """Receive base64 image data from JavaScript"""
-    print('heyo from file upload handler', event)
     try:
         data = json.loads(event.value)
         form_image_base64.value = data.get("base64", "")
@@ -284,7 +279,6 @@ def load_receipts_from_storage(event):
                 str(uuid.uuid4()): {
                     "date": "2024-01-15",
                     "provider": "City General Hospital",
-                    "category": "Medical",
                     "description": "Annual physical exam",
                     "amount": 250.00,
                     "hsa_eligible": True,
@@ -297,7 +291,6 @@ def load_receipts_from_storage(event):
                 str(uuid.uuid4()): {
                     "date": "2024-02-03",
                     "provider": "Vision Center",
-                    "category": "Vision",
                     "description": "Eye exam and prescription glasses",
                     "amount": 385.00,
                     "hsa_eligible": True,
@@ -310,7 +303,6 @@ def load_receipts_from_storage(event):
                 str(uuid.uuid4()): {
                     "date": "2024-03-20",
                     "provider": "Downtown Dental",
-                    "category": "Dental",
                     "description": "Teeth cleaning and checkup",
                     "amount": 175.00,
                     "hsa_eligible": True,
@@ -326,11 +318,7 @@ def load_receipts_from_storage(event):
 
 def filtered_sorted_receipts():
     """Apply filters and sorting to receipts"""
-    result = receipts.value.values()
-
-    # Filter by category
-    if filter_category.value != "All":
-        result = [r for r in result if r.get("category") == filter_category.value]
+    result = list(receipts.value.values())
 
     # Filter by status
     if filter_status.value == "Reimbursed":
@@ -406,13 +394,6 @@ def calc_earnings_while_pending():
 def calc_tax_savings():
     eligible = calc_hsa_eligible()
     return eligible * (user_tax_bracket.value / 100.0)
-
-def get_category_totals():
-    totals = {}
-    for receipt in receipts.value:
-        cat = receipt.get("category", "Other")
-        totals[cat] = totals.get(cat, 0) + receipt.get("amount", 0)
-    return totals
 
 def get_reimbursed_percent():
     total = calc_total_expenses()
@@ -494,22 +475,19 @@ def isReceiptsEmpty():
             <table style="width: 100%; border-collapse: collapse; background: var(--pico-card-background-color, #fff); box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; border: 1px solid var(--pico-muted-border-color, #e5e7eb);">
                 <thead>
                     <tr style="background: var(--pico-table-row-stripped-background-color, #f8f9fa); border-bottom: 2px solid var(--pico-muted-border-color, #dee2e6);">
-                        <th @click={sort_by("date")} style="padding: 1rem; text-align: left; font-weight: 600; color: var(--pico-color, #495057); cursor: pointer;">
+                        <th @click={sort_by("date")} style="padding: 1rem; text-align: left; font-weight: 600; color: var(--pico-color, #495057); cursor: pointer; user-select: none;">
                             Date {('↓' if sort_direction == 'desc' else '↑') if sort_column == 'date' else ''}
                         </th>
-                        <th @click={sort_by("provider")} style="padding: 1rem; text-align: left; font-weight: 600; color: var(--pico-color, #495057); cursor: pointer;">
+                        <th @click={sort_by("provider")} style="padding: 1rem; text-align: left; font-weight: 600; color: var(--pico-color, #495057); cursor: pointer; user-select: none;">
                             Provider {('↓' if sort_direction == 'desc' else '↑') if sort_column == 'provider' else ''}
                         </th>
-                        <th @click={sort_by("category")} style="padding: 1rem; text-align: left; font-weight: 600; color: var(--pico-color, #495057); cursor: pointer;">
-                            Category {('↓' if sort_direction == 'desc' else '↑') if sort_column == 'category' else ''}
-                        </th>
-                        <th @click={sort_by("description")} style="padding: 1rem; text-align: left; font-weight: 600; color: var(--pico-color, #495057); cursor: pointer;">
+                        <th @click={sort_by("description")} style="padding: 1rem; text-align: left; font-weight: 600; color: var(--pico-color, #495057); cursor: pointer; user-select: none;">
                             Description {('↓' if sort_direction == 'desc' else '↑') if sort_column == 'description' else ''}
                         </th>
-                        <th @click={sort_by("amount")} style="padding: 1rem; text-align: right; font-weight: 600; color: var(--pico-color, #495057); cursor: pointer;">
+                        <th @click={sort_by("amount")} style="padding: 1rem; text-align: right; font-weight: 600; color: var(--pico-color, #495057); cursor: pointer; user-select: none;">
                             Amount {('↓' if sort_direction == 'desc' else '↑') if sort_column == 'amount' else ''}
                         </th>
-                        <th @click={sort_by("reimbursed")} style="padding: 1rem; text-align: center; font-weight: 600; color: var(--pico-color, #495057); cursor: pointer;">
+                        <th @click={sort_by("reimbursed")} style="padding: 1rem; text-align: center; font-weight: 600; color: var(--pico-color, #495057); cursor: pointer; user-select: none;">
                             Status {('↓' if sort_direction == 'desc' else '↑') if sort_column == 'reimbursed' else ''}
                         </th>
                         <th style="padding: 1rem; text-align: center; font-weight: 600; color: var(--pico-color, #495057);">Image</th>
@@ -520,15 +498,10 @@ def isReceiptsEmpty():
                     <tr $for={(i, receipt) in enumerate(filtered_sorted_receipts())} style="border-bottom: 1px solid var(--pico-muted-border-color, #dee2e6);">
                         <td style="padding: 1rem; color: var(--pico-color, #212529);">{receipt.get('date', '')}</td>
                         <td style="padding: 1rem; color: var(--pico-color, #212529);">{receipt.get('provider', '')}</td>
-                        <td style="padding: 1rem;">
-                            <span style="padding: 0.25rem 0.75rem; background: transparent; border: 1.5px solid {'#4070b0' if receipt.get('category') == 'Medical' else '#9e4d8a' if receipt.get('category') == 'Dental' else '#3d7a50' if receipt.get('category') == 'Vision' else '#a06e18'}; color: {'#4070b0' if receipt.get('category') == 'Medical' else '#9e4d8a' if receipt.get('category') == 'Dental' else '#3d7a50' if receipt.get('category') == 'Vision' else '#a06e18'}; border-radius: 12px; font-size: 0.85rem; font-weight: 500;">
-                                {receipt.get('category', 'Other')}
-                            </span>
-                        </td>
                         <td style="padding: 1rem; color: var(--pico-muted-color, #666);">{receipt.get('description', '')}</td>
                         <td style="padding: 1rem; text-align: right; color: var(--pico-color, #212529); font-weight: 600;">${'{:,.2f}'.format(receipt.get('amount', 0))}</td>
                         <td style="padding: 1rem; text-align: center;">
-                            <span @click={toggle_reimbursed(receipt)} style="padding: 0.25rem 0.75rem; background: transparent; border: 1.5px solid {'#3d7a50' if receipt.get('reimbursed') else '#a06e18'}; color: {'#3d7a50' if receipt.get('reimbursed') else '#a06e18'}; border-radius: 12px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">
+                            <span @click={toggle_reimbursed(receipt)} style="padding: 0.25rem 0.75rem; background: transparent; border: 1.5px solid {'#3d7a50' if receipt.get('reimbursed') else '#a06e18'}; color: {'#3d7a50' if receipt.get('reimbursed') else '#a06e18'}; border-radius: 12px; font-size: 0.85rem; font-weight: 500; cursor: pointer; user-select: none;">
                                 {'✓ Reimbursed' if receipt.get('reimbursed') else '⏳ Pending'}
                             </span>
                         </td>
@@ -613,18 +586,6 @@ def isReceiptsEmpty():
                         required
                     />
                 </div>
-                <div>
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--pico-color, inherit);">Category *</label>
-                    <select
-                        value={form_category}
-                        @change={update_form_category}
-                    >
-                        <option value="Medical">Medical</option>
-                        <option value="Dental">Dental</option>
-                        <option value="Vision">Vision</option>
-                        <option value="Prescription">Prescription</option>
-                    </select>
-                </div>
             </div>
 
             <div>
@@ -666,7 +627,7 @@ def isReceiptsEmpty():
             </div>
 
             <div style="display: flex; gap: 2rem; margin-bottom: 1rem;">
-                <label style="display: flex; align-items: center; cursor: pointer;">
+                <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
                     <input
                         type="checkbox"
                         checked={form_hsa_eligible}
@@ -675,7 +636,7 @@ def isReceiptsEmpty():
                     />
                     <span style="font-weight: 500; color: var(--pico-color, inherit);">HSA Eligible</span>
                 </label>
-                <label style="display: flex; align-items: center; cursor: pointer;">
+                <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
                     <input
                         type="checkbox"
                         checked={form_reimbursed}
@@ -694,7 +655,7 @@ def isReceiptsEmpty():
                     accept="image/*"
                     style="display: none;"
                 />
-                <button type="button" onclick="document.getElementById('receipt-image-upload').click()" style="padding: 0.5rem 1rem; background: var(--pico-secondary, #6c757d); color: white; border: none; border-radius: 4px; cursor: pointer;">
+                <button type="button" onclick="document.getElementById('receipt-image-upload').click()" style="padding: 0.5rem 1rem; background: var(--pico-secondary, #6c757d); color: white; border: none; border-radius: 4px; cursor: pointer; user-select: none;">
                     📎 Upload Image
                 </button>
                 <small style="display: block; margin-top: 0.25rem; color: var(--pico-muted-color, #666);">Max 2MB. Image will be compressed automatically.</small>
@@ -933,11 +894,11 @@ function exportCSV() {
         return;
     }
 
-    let csv = 'Date,Provider,Category,Description,Amount,HSA Eligible,Reimbursed\n';
+    let csv = 'Date,Provider,Description,Amount,HSA Eligible,Reimbursed\n';
     receipts.forEach(r => {
         const description = (r.description || '').replace(/"/g, '""');
         const provider = (r.provider || '').replace(/"/g, '""');
-        csv += `${r.date || ''},"${provider}","${r.category || ''}","${description}",${r.amount || 0},${r.hsa_eligible ? 'Yes' : 'No'},${r.reimbursed ? 'Yes' : 'No'}\n`;
+        csv += `${r.date || ''},"${provider}","${description}",${r.amount || 0},${r.hsa_eligible ? 'Yes' : 'No'},${r.reimbursed ? 'Yes' : 'No'}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -972,13 +933,12 @@ function exportPDF() {
     printWindow.document.write('<style>body { font-family: Arial, sans-serif; padding: 20px; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style>');
     printWindow.document.write('</head><body>');
     printWindow.document.write('<h1>Medical Receipts</h1>');
-    printWindow.document.write('<table><thead><tr><th>Date</th><th>Provider</th><th>Category</th><th>Description</th><th>Amount</th><th>Status</th></tr></thead><tbody>');
+    printWindow.document.write('<table><thead><tr><th>Date</th><th>Provider</th><th>Description</th><th>Amount</th><th>Status</th></tr></thead><tbody>');
 
     receipts.forEach(r => {
         printWindow.document.write(`<tr>
             <td>${r.date || ''}</td>
             <td>${r.provider || ''}</td>
-            <td>${r.category || ''}</td>
             <td>${r.description || ''}</td>
             <td>$${(r.amount || 0).toFixed(2)}</td>
             <td>${r.reimbursed ? 'Reimbursed' : 'Pending'}</td>

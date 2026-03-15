@@ -9,18 +9,18 @@ A financial simulation web application built with PyWire that visualizes histori
 ## Development Commands
 
 ```bash
-# Install/sync dependencies
+# Start all services via Docker Compose (http://localhost:3000, with hot-reload)
+# src/ is volume-mounted so PyWire detects changes without rebuilding
+cp .env.example .env  # set POSTGRES_PASSWORD, then:
+source .env
+docker compose up -d --build
+
+# Alternatively, run the PyWire app locally without database/auth (http://localhost:3000)
 uv sync
-
-# Run development server (with hot-reload, http://localhost:8000)
 uv run pywire dev
-
-# Build and run in Docker (http://localhost:3000)
-docker build -t financial-simulation .
-docker run -p 3000:3000 financial-simulation
 ```
 
-The Docker image uses `pywire dev --no-tui --host 0.0.0.0` and serves over plain HTTP (no mkcert). Do not add mkcert to the Dockerfile — the container-generated certificate won't be trusted by the host browser.
+The Docker image uses `pywire dev --no-tui --host 0.0.0.0 --reload` and serves over plain HTTP (no mkcert). Do not add mkcert to the Dockerfile — the container-generated certificate won't be trusted by the host browser.
 
 ## Architecture
 

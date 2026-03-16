@@ -9,12 +9,9 @@ class AuthMiddleware:
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] == "http":
-            session = scope.get("session", {})
-            token = current_user_id.set(session.get("user_id", "dev-user-hardcoded"))  # TEMP
-            try:
-                await self.app(scope, receive, send)
-            finally:
-                current_user_id.reset(token)
-        else:
+        session = scope.get("session", {})
+        token = current_user_id.set(session.get("user_id"))
+        try:
             await self.app(scope, receive, send)
+        finally:
+            current_user_id.reset(token)

@@ -12,6 +12,10 @@ class _AppWithMiddleware:
         self._middleware = middleware
 
     def __getattr__(self, name):
+        # app is the ASGI app that PyWire expects, so we return the middleware stack when it's accessed.
+        if name == "app":
+            return self._middleware
+        # For any other attribute, we proxy to the underlying PyWire instance.
         return getattr(self._pywire, name)
 
     async def __call__(self, scope, receive, send):
